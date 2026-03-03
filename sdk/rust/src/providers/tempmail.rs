@@ -60,8 +60,27 @@ pub fn get_emails(email: &str) -> Result<Vec<Email>, String> {
     }
 
     let emails = data["emails"].as_array()
-        .map(|arr| arr.iter().map(|raw| normalize_email(raw, email)).collect())
+        .map(|arr| arr.iter().map(|raw| {
+            let flat = flatten_message(raw, email);
+            normalize_email(&flat, email)
+        }).collect())
         .unwrap_or_default();
 
     Ok(emails)
+}
+
+/// 将 tempmail.ing 的原始格式扁平化
+/// content → html, from_address → from, received_at → date
+fn flatten_message(raw: &Value, recipient: &str) -> Value {
+    serde_json::json!({
+        "id": raw["id"],
+        "from": raw["from_address"].as_str().or_else(|| raw["from"].as_str()).unwrap_or(""),
+        "to": recipient,
+        "subject": raw["subject"].as_str().unwrap_or(""),
+        "text": raw["text"].as_str().unwrap_or(""),
+        "html": raw["content"].as_str().or_else(|| raw["html"].as_str()).unwrap_or(""),
+        "date": raw["received_at"].as_str().or_else(|| raw["date"].as_str()).unwrap_or(""),
+        "is_read": raw["is_read"].as_i64().unwrap_or(0) == 1,
+        "attachments": raw.get("attachments").cloned().unwrap_or(Value::Array(vec![])),
+    })
 }

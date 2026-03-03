@@ -78,7 +78,23 @@ tm_email_t* tm_provider_tempmail_get_emails(const char *email, int *count) {
 
     tm_email_t *emails = tm_emails_new(n);
     for (int i = 0; i < n; i++) {
-        emails[i] = tm_normalize_email(cJSON_GetArrayItem(arr, i), email);
+        cJSON *msg = cJSON_GetArrayItem(arr, i);
+
+        /* 扁平化 tempmail.ing 格式: content→html, from_address→from, received_at→date */
+        cJSON *flat = cJSON_CreateObject();
+        cJSON_AddItemToObject(flat, "id", cJSON_Duplicate(cJSON_GetObjectItemCaseSensitive(msg, "id"), 1));
+        cJSON *fa = cJSON_GetObjectItemCaseSensitive(msg, "from_address");
+        cJSON_AddStringToObject(flat, "from", fa ? cJSON_GetStringValue(fa) : "");
+        cJSON_AddStringToObject(flat, "to", email);
+        cJSON_AddStringToObject(flat, "subject", TM_JSON_STR(cJSON_GetObjectItemCaseSensitive(msg, "subject"), ""));
+        cJSON_AddStringToObject(flat, "text", TM_JSON_STR(cJSON_GetObjectItemCaseSensitive(msg, "text"), ""));
+        cJSON_AddStringToObject(flat, "html", TM_JSON_STR(cJSON_GetObjectItemCaseSensitive(msg, "content"), ""));
+        cJSON_AddStringToObject(flat, "date", TM_JSON_STR(cJSON_GetObjectItemCaseSensitive(msg, "received_at"), ""));
+        cJSON *ir = cJSON_GetObjectItemCaseSensitive(msg, "is_read");
+        cJSON_AddBoolToObject(flat, "is_read", ir && cJSON_IsNumber(ir) && ir->valueint == 1);
+
+        emails[i] = tm_normalize_email(flat, email);
+        cJSON_Delete(flat);
     }
 
     cJSON_Delete(json);

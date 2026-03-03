@@ -57,5 +57,29 @@ export async function getEmails(email: string): Promise<Email[]> {
   }
 
   const rawEmails = data.emails || [];
-  return rawEmails.map((raw: any) => normalizeEmail(raw, email));
+  return rawEmails.map((raw: any) => normalizeEmail(flattenMessage(raw, email), email));
+}
+
+/**
+ * 将 tempmail.ing 的原始邮件格式扁平化
+ *
+ * API 返回格式:
+ *   from_address: 发件人邮箱
+ *   content: HTML 内容（非纯文本）
+ *   text: 纯文本（通常为空）
+ *   received_at: 接收时间
+ *   is_read: 0/1
+ */
+function flattenMessage(raw: any, recipientEmail: string): any {
+  return {
+    id: raw.id ?? '',
+    from: raw.from_address || raw.from || '',
+    to: recipientEmail,
+    subject: raw.subject || '',
+    text: raw.text || '',
+    html: raw.content || raw.html || '',
+    date: raw.received_at || raw.date || '',
+    isRead: raw.is_read === 1 || raw.is_read === true,
+    attachments: raw.attachments || [],
+  };
 }

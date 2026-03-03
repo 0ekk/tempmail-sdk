@@ -109,5 +109,40 @@ func tempmailGetEmails(email string) ([]Email, error) {
 		return nil, fmt.Errorf("failed to get emails")
 	}
 
-	return normalizeRawEmails(result.Emails, email)
+	/*
+	 * tempmail.ing API 返回格式特殊：
+	 *   from_address → from
+	 *   content → html（是 HTML 内容）
+	 *   text → text（通常为空）
+	 *   received_at → date
+	 *   is_read → 0/1
+	 * 需要先扁平化再 normalize
+	 */
+	emails := make([]Email, 0, len(result.Emails))
+	for _, raw := range result.Emails {
+		var m map[string]interface{}
+		if err := json.Unmarshal(raw, &m); err != nil {
+			continue
+		}
+		flat := tempmailFlattenMessage(m, email)
+		emails = append(emails, normalizeRawEmail(flat, email))
+	}
+	return emails, nil
+}
+
+/*
+ * tempmailFlattenMessage 将 tempmail.ing 的原始格式扁平化
+ * content 映射到 html，from_address 映射到 from
+ */
+func tempmailFlattenMessage(raw map[string]interface{}, recipientEmail string) map[string]interface{} {
+	return map[string]interface{}{
+		"id":      raw["id"],
+		"from":    raw["from_address"],
+		"to":      recipientEmail,
+		"subject": raw["subject"],
+		"text":    raw["text"],
+		"html":    raw["content"],
+		"date":    raw["received_at"],
+		"is_read": raw["is_read"],
+	}
 }

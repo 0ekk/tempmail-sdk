@@ -55,4 +55,22 @@ def get_emails(email: str, **kwargs) -> list:
     if not data.get("success"):
         raise Exception("Failed to get emails")
 
-    return [normalize_email(raw, email) for raw in (data.get("emails") or [])]
+    return [normalize_email(_flatten_message(raw, email), email) for raw in (data.get("emails") or [])]
+
+
+def _flatten_message(raw, recipient_email):
+    """
+    将 tempmail.ing 的原始格式扁平化
+    content → html, from_address → from, received_at → date
+    """
+    return {
+        "id": raw.get("id", ""),
+        "from": raw.get("from_address") or raw.get("from", ""),
+        "to": recipient_email,
+        "subject": raw.get("subject", ""),
+        "text": raw.get("text", ""),
+        "html": raw.get("content") or raw.get("html", ""),
+        "date": raw.get("received_at") or raw.get("date", ""),
+        "is_read": raw.get("is_read") == 1 or raw.get("is_read") is True,
+        "attachments": raw.get("attachments", []),
+    }
