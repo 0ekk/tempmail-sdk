@@ -11,7 +11,9 @@ keywords = ["tempmail", "email", "temporary-email", "disposable-email"]
 categories = ["api-bindings", "email"]
 
 [dependencies]
-reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls"] }
+wreq = { version = "6.0.0-rc", features = ["json", "cookies", "gzip", "brotli", "zstd", "socks", "form"] }
+wreq-util = { version = "3.0.0-rc", features = ["emulation"] }
+tokio = { version = "1", features = ["rt", "macros"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rand = "0.8"

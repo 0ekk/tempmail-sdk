@@ -5,7 +5,7 @@ API: https://api.tempmail.ing/api
 
 from urllib.parse import quote
 from .. import http as tm_http
-from ..types import EmailInfo, Email
+from ..types import EmailInfo
 from ..normalize import normalize_email
 
 CHANNEL = "tempmail"

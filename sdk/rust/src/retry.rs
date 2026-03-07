@@ -28,7 +28,7 @@ fn should_retry(err: &str) -> bool {
         return true;
     }
 
-    // HTTP 4xx/5xx 错误
+    // HTTP 4xx/5xx 错误（含状态码的错误消息）
     if msg.contains(": 4") || msg.contains(": 5") {
         return true;
     }
@@ -42,9 +42,9 @@ fn should_retry(err: &str) -> bool {
 /// 带重试的操作执行器
 ///
 /// 功能:
-/// - 自动重试可恢复的错误（网络错误、超时、HTTP 4xx/5xx）
+/// - 自动重试可恢复的错误（网络错误、超时、HTTP 4xx/5xx 等）
 /// - 指数退避策略避免短时间内过度请求
-/// - 不可恢复的错误直接返回
+/// - 不可恢复的错误（SDK 内部参数校验错误等）直接返回
 pub fn with_retry<T, F>(f: F, config: Option<&RetryConfig>) -> Result<T, String>
 where
     F: Fn() -> Result<T, String>,

@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"net/http"
 	"strings"
 	"sync"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 const mailTmBaseURL = "https://api.mail.tm"

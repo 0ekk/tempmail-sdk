@@ -10,6 +10,7 @@
  */
 
 import { InternalEmailInfo, Email, Channel } from '../types';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'maildrop';
 const GRAPHQL_URL = 'https://api.maildrop.cc/graphql';
@@ -113,7 +114,7 @@ async function graphqlRequest(
   query: string,
   variables: Record<string, string> = {},
 ): Promise<any> {
-  const response = await fetch(GRAPHQL_URL, {
+  const response = await fetchWithTimeout(GRAPHQL_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

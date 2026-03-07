@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"regexp"
 	"sync"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 const tempMailIOBaseURL = "https://api.internal.temp-mail.io/api/v3"
@@ -32,7 +33,7 @@ func fetchTempMailIOCorsHeader() string {
 			cachedTempMailIOCorsHeader = "1"
 			return
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		req.Header.Set("User-Agent", GetCurrentUA())
 
 		client := HTTPClient()
 		resp, err := client.Do(req)
@@ -79,7 +80,7 @@ func setTempMailIOHeaders(req *http.Request) {
 	req.Header.Set("Application-Name", "web")
 	req.Header.Set("Application-Version", "4.0.0")
 	req.Header.Set("X-CORS-Header", corsHeader)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0")
+	req.Header.Set("User-Agent", GetCurrentUA())
 	req.Header.Set("Origin", "https://temp-mail.io")
 	req.Header.Set("Referer", "https://temp-mail.io/")
 }
@@ -104,6 +105,10 @@ func tempMailIOGenerate() (*EmailInfo, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "temp-mail-io generate"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -142,6 +147,10 @@ func tempMailIOGetEmails(email string) ([]Email, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "temp-mail-io get emails"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

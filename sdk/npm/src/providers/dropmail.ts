@@ -1,5 +1,6 @@
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'dropmail';
 const BASE_URL = 'https://dropmail.me/api/graphql/MY_TOKEN';
@@ -29,7 +30,7 @@ async function graphqlRequest(query: string, variables?: Record<string, any>): P
     params.set('variables', JSON.stringify(variables));
   }
 
-  const response = await fetch(BASE_URL, {
+  const response = await fetchWithTimeout(BASE_URL, {
     method: 'POST',
     headers: DEFAULT_HEADERS,
     body: params.toString(),

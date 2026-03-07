@@ -9,8 +9,9 @@ import (
 	"math/rand"
 	"mime"
 	"mime/multipart"
-	"net/http"
 	"strings"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 /**
@@ -152,7 +153,7 @@ func maildropGraphQL(operationName string, query string, variables map[string]st
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "https://maildrop.cc")
 	req.Header.Set("Referer", "https://maildrop.cc/")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	req.Header.Set("User-Agent", GetCurrentUA())
 
 	client := HTTPClient()
 	resp, err := client.Do(req)

@@ -10,6 +10,7 @@
 
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'guerrillamail';
 const BASE_URL = 'https://api.guerrillamail.com/ajax.php';
@@ -20,7 +21,7 @@ const BASE_URL = 'https://api.guerrillamail.com/ajax.php';
  * 返回 email_addr + sid_token（用于后续获取邮件）
  */
 export async function generateEmail(): Promise<InternalEmailInfo> {
-  const response = await fetch(`${BASE_URL}?f=get_email_address&lang=en`, {
+  const response = await fetchWithTimeout(`${BASE_URL}?f=get_email_address&lang=en`, {
     method: 'GET',
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -51,7 +52,7 @@ export async function generateEmail(): Promise<InternalEmailInfo> {
  * 返回 list 数组，每个元素包含 mail_id, mail_from, mail_subject, mail_body 等
  */
 export async function getEmails(token: string, email: string): Promise<Email[]> {
-  const response = await fetch(`${BASE_URL}?f=check_email&seq=0&sid_token=${encodeURIComponent(token)}`, {
+  const response = await fetchWithTimeout(`${BASE_URL}?f=check_email&seq=0&sid_token=${encodeURIComponent(token)}`, {
     method: 'GET',
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',

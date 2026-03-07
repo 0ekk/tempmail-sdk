@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 const awamailBaseURL = "https://awamail.com/welcome"
 
 var awamailHeaders = map[string]string{
-	"User-Agent":         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0",
+	/* User-Agent 由 setAwamailHeaders 动态设置，与 TLS 指纹匹配 */
 	"Accept":             "application/json, text/javascript, */*; q=0.01",
 	"accept-language":    "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
 	"cache-control":      "no-cache",
@@ -47,6 +48,7 @@ func setAwamailHeaders(req *http.Request) {
 	for k, v := range awamailHeaders {
 		req.Header.Set(k, v)
 	}
+	req.Header.Set("User-Agent", GetCurrentUA())
 }
 
 // awamailGenerate 创建临时邮箱
@@ -59,13 +61,12 @@ func awamailGenerate() (*EmailInfo, error) {
 	}
 	setAwamailHeaders(req)
 	req.Header.Set("Content-Length", "0")
-
-	// 不自动跟踪重定向，以便捕获 Set-Cookie
-	client := HTTPClient()
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
-	resp, err := client.Do(req)
+	/*
+	 * 不自动跟踪重定向，以便捕获 Set-Cookie
+	 * 使用独立的 TLS 客户端实例，避免影响全局缓存客户端
+	 */
+	noRedirectClient := HTTPClientNoRedirect()
+	resp, err := noRedirectClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -124,6 +125,10 @@ func awamailGetEmails(token string, email string) ([]Email, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "awamail get emails"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

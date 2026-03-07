@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 const tempmailLaBaseURL = "https://tempmail.la/api"
 
 var tempmailLaHeaders = map[string]string{
-	"User-Agent":         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0",
+	/* User-Agent 由 setTempmailLaHeaders 动态设置，与 TLS 指纹匹配 */
 	"Accept":             "application/json, text/plain, */*",
 	"Content-Type":       "application/json",
 	"accept-language":    "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
@@ -64,6 +65,7 @@ func setTempmailLaHeaders(req *http.Request) {
 	for k, v := range tempmailLaHeaders {
 		req.Header.Set(k, v)
 	}
+	req.Header.Set("User-Agent", GetCurrentUA())
 }
 
 // tempmailLaGenerate 创建临时邮箱
@@ -83,6 +85,10 @@ func tempmailLaGenerate() (*EmailInfo, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "tempmail-la generate"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

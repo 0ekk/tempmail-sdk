@@ -3,8 +3,9 @@ dropmail.me 渠道实现
 API: GraphQL https://dropmail.me/api/graphql/MY_TOKEN
 """
 
+import json
 from .. import http as tm_http
-from ..types import EmailInfo, Email
+from ..types import EmailInfo
 from ..normalize import normalize_email
 
 CHANNEL = "dropmail"
@@ -26,7 +27,6 @@ def _graphql_request(query: str, variables: dict = None) -> dict:
     """执行 GraphQL 请求（application/x-www-form-urlencoded）"""
     data = {"query": query}
     if variables:
-        import json
         data["variables"] = json.dumps(variables)
 
     resp = tm_http.post(BASE_URL, data=data)

@@ -1,19 +1,19 @@
 package tempemail
 
 import (
-	"crypto/tls"
-	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	tls_client "github.com/bogdanfinn/tls-client"
 )
 
 /*
  * SDKConfig SDK 全局配置
  * 包含代理、超时、SSL 等设置，作用于所有 HTTP 请求
+ * 底层使用 tls-client 实现浏览器 TLS 指纹模拟，自动随机选取浏览器配置
  *
  * 支持环境变量自动读取（优先级低于代码设置）：
  *   TEMPMAIL_PROXY    - 代理 URL
@@ -34,9 +34,10 @@ var (
 	configVersion uint64 /* 配置版本号，每次 SetConfig 递增 */
 	configMu      sync.RWMutex
 
-	cachedClient        *http.Client /* 缓存的 HTTP 客户端 */
-	cachedClientVersion uint64       /* 缓存客户端对应的配置版本 */
-	clientMu            sync.Mutex
+	cachedClient           tls_client.HttpClient /* 缓存的 TLS 指纹客户端 */
+	cachedNoRedirectClient tls_client.HttpClient /* 缓存的不跟随重定向客户端 */
+	cachedClientVersion    uint64                /* 缓存客户端对应的配置版本 */
+	clientMu               sync.Mutex
 )
 
 func init() {
@@ -90,10 +91,52 @@ func GetConfig() SDKConfig {
 }
 
 /*
- * HTTPClient 获取带全局配置的 HTTP 客户端
- * 内部缓存复用，仅在配置变更时重建，保证连接池复用以提升性能
+ * buildTLSClient 根据配置和浏览器指纹创建 tls-client 实例
+ * @param cfg SDK 全局配置
+ * @param bc 浏览器配置（TLS 指纹 profile + UA）
+ * @param followRedirect 是否跟随重定向
+ * @returns tls_client.HttpClient
  */
-func HTTPClient() *http.Client {
+func buildTLSClient(cfg SDKConfig, bc BrowserConfig, followRedirect bool) tls_client.HttpClient {
+	timeout := cfg.Timeout
+	if timeout <= 0 {
+		timeout = 15 * time.Second
+	}
+
+	options := []tls_client.HttpClientOption{
+		tls_client.WithTimeoutSeconds(int(timeout.Seconds())),
+		tls_client.WithClientProfile(bc.Profile),
+		tls_client.WithRandomTLSExtensionOrder(),
+		tls_client.WithCookieJar(tls_client.NewCookieJar()),
+	}
+
+	if !followRedirect {
+		options = append(options, tls_client.WithNotFollowRedirects())
+	}
+
+	if cfg.Insecure {
+		options = append(options, tls_client.WithInsecureSkipVerify())
+	}
+
+	if cfg.Proxy != "" {
+		options = append(options, tls_client.WithProxyUrl(cfg.Proxy))
+	}
+
+	client, err := tls_client.NewHttpClient(tls_client.NewNoopLogger(), options...)
+	if err != nil {
+		sdkLogger.Error("创建 TLS 客户端失败，使用默认配置", "error", err.Error())
+		client, _ = tls_client.NewHttpClient(tls_client.NewNoopLogger())
+	}
+
+	return client
+}
+
+/*
+ * HTTPClient 获取带全局配置和浏览器 TLS 指纹的 HTTP 客户端
+ * 内部缓存复用，仅在配置变更时重建
+ * 每次重建时随机选取浏览器配置（profile + UA），模拟真实浏览器指纹
+ */
+func HTTPClient() tls_client.HttpClient {
 	configMu.RLock()
 	ver := configVersion
 	configMu.RUnlock()
@@ -108,35 +151,38 @@ func HTTPClient() *http.Client {
 
 	/* 缓存未命中或配置已变更，重建客户端 */
 	cfg := GetConfig()
+	bc := RandomBrowserConfig()
+	setCurrentBrowser(bc)
 
-	timeout := cfg.Timeout
-	if timeout <= 0 {
-		timeout = 15 * time.Second
-	}
+	sdkLogger.Debug("创建 TLS 客户端", "ua", bc.UA)
 
-	transport := &http.Transport{
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     90 * time.Second,
-	}
-
-	/* 代理 */
-	if cfg.Proxy != "" {
-		proxyURL, err := url.Parse(cfg.Proxy)
-		if err == nil {
-			transport.Proxy = http.ProxyURL(proxyURL)
-		}
-	}
-
-	/* SSL 验证 */
-	if cfg.Insecure {
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-
-	cachedClient = &http.Client{
-		Timeout:   timeout,
-		Transport: transport,
-	}
+	cachedClient = buildTLSClient(cfg, bc, true)
 	cachedClientVersion = ver
 	return cachedClient
+}
+
+/*
+ * HTTPClientNoRedirect 获取不跟随重定向的 TLS 客户端
+ * 使用当前浏览器配置，用于需要捕获 Set-Cookie 等场景
+ * 内部缓存复用，与主客户端同步失效
+ */
+func HTTPClientNoRedirect() tls_client.HttpClient {
+	/* 先确保主客户端已初始化（会设置 currentBrowser） */
+	HTTPClient()
+
+	configMu.RLock()
+	ver := configVersion
+	configMu.RUnlock()
+
+	clientMu.Lock()
+	defer clientMu.Unlock()
+
+	if cachedNoRedirectClient != nil && cachedClientVersion == ver {
+		return cachedNoRedirectClient
+	}
+
+	cfg := GetConfig()
+	bc := GetCurrentBrowser()
+	cachedNoRedirectClient = buildTLSClient(cfg, bc, false)
+	return cachedNoRedirectClient
 }

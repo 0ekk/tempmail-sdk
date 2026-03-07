@@ -32,8 +32,13 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
 
 /**
  * 默认重试判断
- * 网络错误、超时、HTTP 4xx/5xx 错误均可重试
- * 仅参数校验类错误（由 SDK 内部抛出）不重试
+ * 以下错误类型会触发重试：
+ * - 网络连接错误（fetch failed, ECONNREFUSED, ECONNRESET 等）
+ * - 超时错误（timeout, abort）
+ * - DNS 解析失败
+ * - HTTP 429 限流
+ * - HTTP 4xx/5xx 服务端错误（含状态码的错误消息）
+ * 仅 SDK 内部的参数校验类错误不重试
  */
 function defaultShouldRetry(error: any): boolean {
   if (!error) return false;
@@ -58,7 +63,7 @@ function defaultShouldRetry(error: any): boolean {
     return true;
   }
 
-  /* HTTP 4xx/5xx 错误 → 重试 */
+  /* HTTP 4xx/5xx 错误（含状态码的错误消息）→ 重试 */
   const statusMatch = message.match(/:\s*(\d{3})/);
   if (statusMatch) {
     const status = parseInt(statusMatch[1], 10);
@@ -77,9 +82,9 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * 带重试的异步操作执行器
- * - 自动重试可恢复的错误（网络错误、超时、5xx）
+ * - 自动重试可恢复的错误（网络错误、超时、HTTP 4xx/5xx）
  * - 指数退避避免过度请求
- * - 不可恢复的错误（4xx 参数错误等）直接抛出不重试
+ * - 不可恢复的错误（SDK 内部参数校验错误等）直接抛出不重试
  *
  * @param fn 要执行的异步操作
  * @param options 重试配置
@@ -127,18 +132,46 @@ export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions)
  * @param init fetch 选项
  * @param timeoutMs 超时时间（毫秒）
  */
+/**
+ * 缓存的全局配置快照，避免每次请求都读取
+ * 仅在 setConfig 被调用时失效（通过 configVersion 比对）
+ */
+let _cachedFetchConfig: { fetchFn: typeof fetch; timeout: number; version: number } | null = null;
+
+/**
+ * 获取缓存的 fetch 配置
+ */
+function getFetchConfig(): { fetchFn: typeof fetch; timeout: number } {
+  const config = getConfig();
+  /* 简单的引用比对即可，getConfig 在未变更时返回同一对象 */
+  if (!_cachedFetchConfig || _cachedFetchConfig.fetchFn !== (config.customFetch || fetch) || _cachedFetchConfig.timeout !== (config.timeout ?? DEFAULT_RETRY_OPTIONS.timeout)) {
+    _cachedFetchConfig = {
+      fetchFn: config.customFetch || fetch,
+      timeout: config.timeout ?? DEFAULT_RETRY_OPTIONS.timeout,
+      version: 0,
+    };
+  }
+  return _cachedFetchConfig;
+}
+
 export async function fetchWithTimeout(
   url: string,
   init?: RequestInit,
   timeoutMs?: number,
 ): Promise<Response> {
-  const config = getConfig();
-  const effectiveTimeout = timeoutMs ?? config.timeout ?? DEFAULT_RETRY_OPTIONS.timeout;
+  const { fetchFn, timeout: defaultTimeout } = getFetchConfig();
+  const effectiveTimeout = timeoutMs ?? defaultTimeout;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), effectiveTimeout);
 
-  /* 使用自定义 fetch 或原生 fetch */
-  const fetchFn = config.customFetch || fetch;
+  /*
+   * 如果调用方已提供 signal，需要同时监听两个信号（调用方 + 超时）
+   * 任一触发则中断请求
+   */
+  const externalSignal = init?.signal;
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
 
   try {
     const response = await fetchFn(url, {

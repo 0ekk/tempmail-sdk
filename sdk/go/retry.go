@@ -3,15 +3,16 @@ package tempemail
 import (
 	"fmt"
 	"math"
-	"net/http"
 	"strings"
 	"time"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 /*
  * RetryOptions 重试配置选项
- * SDK 内部对网络错误、超时、服务端 5xx 错误自动重试
- * 4xx 客户端错误（如参数错误）不会重试
+ * SDK 内部对网络错误、超时、HTTP 4xx/5xx 错误自动重试
+ * 仅 SDK 内部的参数校验类错误不会重试
  *
  * 示例:
  *   opts := &RetryOptions{MaxRetries: 3, InitialDelay: 2 * time.Second}
@@ -67,10 +68,11 @@ func mergeRetryOptions(opts *RetryOptions) RetryOptions {
  * - 网络连接错误（connection refused, connection reset, broken pipe）
  * - 超时错误（timeout, timed out, i/o timeout）
  * - DNS 解析失败（no such host, dns）
- * - HTTP 4xx/5xx 错误
+ * - HTTP 429 限流
+ * - HTTP 4xx/5xx 错误（含状态码的错误消息）
  *
  * 不可重试的错误:
- * - 响应解析错误、参数校验错误等 SDK 内部错误
+ * - JSON 解析错误、参数校验错误等 SDK 内部错误
  */
 func shouldRetry(err error) bool {
 	if err == nil {
@@ -99,7 +101,7 @@ func shouldRetry(err error) bool {
 		return true
 	}
 
-	/* HTTP 4xx/5xx 错误 → 重试 */
+	/* HTTP 4xx/5xx 错误（含状态码的错误消息）→ 重试 */
 	if strings.Contains(msg, ": 4") || strings.Contains(msg, ": 5") {
 		return true
 	}
@@ -111,9 +113,9 @@ func shouldRetry(err error) bool {
  * WithRetry 带重试的泛型操作执行器
  *
  * 功能:
- * - 自动重试可恢复的错误（网络错误、超时、服务端 5xx）
+ * - 自动重试可恢复的错误（网络错误、超时、HTTP 4xx/5xx）
  * - 指数退避策略避免短时间内过度请求
- * - 不可恢复的错误（4xx 等）直接返回，不浪费重试次数
+ * - 不可恢复的错误（SDK 内部参数校验错误等）直接返回，不浪费重试次数
  *
  * 参数:
  * - fn:   要执行的操作函数

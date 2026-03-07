@@ -1,5 +1,6 @@
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'awamail';
 const BASE_URL = 'https://awamail.com/welcome';
@@ -37,7 +38,7 @@ function extractSessionCookie(response: Response): string {
  * 需要保存响应中的 Set-Cookie (awamail_session) 用于后续获取邮件
  */
 export async function generateEmail(): Promise<InternalEmailInfo> {
-  const response = await fetch(`${BASE_URL}/change_mailbox`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/change_mailbox`, {
     method: 'POST',
     headers: {
       ...DEFAULT_HEADERS,
@@ -77,7 +78,7 @@ export async function generateEmail(): Promise<InternalEmailInfo> {
  * 返回: { success, data: { emails: [...], latest: {...} } }
  */
 export async function getEmails(token: string, email: string): Promise<Email[]> {
-  const response = await fetch(`${BASE_URL}/get_emails`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/get_emails`, {
     method: 'GET',
     headers: {
       ...DEFAULT_HEADERS,

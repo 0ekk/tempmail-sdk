@@ -1,5 +1,6 @@
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'mail-tm';
 const BASE_URL = 'https://api.mail.tm';
@@ -26,7 +27,7 @@ function randomString(length: number): string {
  * API: GET /domains
  */
 async function getDomains(): Promise<string[]> {
-  const response = await fetch(`${BASE_URL}/domains`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/domains`, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });
@@ -51,7 +52,7 @@ async function getDomains(): Promise<string[]> {
  * API: POST /accounts
  */
 async function createAccount(address: string, password: string): Promise<any> {
-  const response = await fetch(`${BASE_URL}/accounts`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/accounts`, {
     method: 'POST',
     headers: { ...DEFAULT_HEADERS, 'Content-Type': 'application/ld+json' },
     body: JSON.stringify({ address, password }),
@@ -70,7 +71,7 @@ async function createAccount(address: string, password: string): Promise<any> {
  * API: POST /token
  */
 async function getToken(address: string, password: string): Promise<string> {
-  const response = await fetch(`${BASE_URL}/token`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/token`, {
     method: 'POST',
     headers: DEFAULT_HEADERS,
     body: JSON.stringify({ address, password }),
@@ -144,7 +145,7 @@ function flattenMessage(msg: any, recipientEmail: string): any {
  */
 export async function getEmails(token: string, email: string): Promise<Email[]> {
   // 1. 获取邮件列表
-  const listResponse = await fetch(`${BASE_URL}/messages`, {
+  const listResponse = await fetchWithTimeout(`${BASE_URL}/messages`, {
     method: 'GET',
     headers: {
       ...DEFAULT_HEADERS,
@@ -167,7 +168,7 @@ export async function getEmails(token: string, email: string): Promise<Email[]> 
   // 2. 并行获取每封邮件的详情（含 text/html/attachments）
   const detailPromises = messages.map(async (msg: any) => {
     try {
-      const detailResponse = await fetch(`${BASE_URL}/messages/${msg.id}`, {
+      const detailResponse = await fetchWithTimeout(`${BASE_URL}/messages/${msg.id}`, {
         method: 'GET',
         headers: {
           ...DEFAULT_HEADERS,

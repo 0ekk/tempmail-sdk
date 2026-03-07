@@ -1,5 +1,6 @@
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'tempmail';
 const BASE_URL = 'https://api.tempmail.ing/api';
@@ -15,7 +16,7 @@ const DEFAULT_HEADERS = {
 };
 
 export async function generateEmail(duration: number = 30): Promise<InternalEmailInfo> {
-  const response = await fetch(`${BASE_URL}/generate`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/generate`, {
     method: 'POST',
     headers: DEFAULT_HEADERS,
     body: JSON.stringify({ duration }),
@@ -41,7 +42,7 @@ export async function generateEmail(duration: number = 30): Promise<InternalEmai
 
 export async function getEmails(email: string): Promise<Email[]> {
   const encodedEmail = encodeURIComponent(email);
-  const response = await fetch(`${BASE_URL}/emails/${encodedEmail}`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/emails/${encodedEmail}`, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });

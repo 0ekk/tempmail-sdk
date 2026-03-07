@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"time"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 const (
@@ -36,7 +37,7 @@ func linshiEmailGenerate() (*EmailInfo, error) {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", GetCurrentUA())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "https://www.linshi-email.com")
 	req.Header.Set("Referer", "https://www.linshi-email.com/")
@@ -48,6 +49,10 @@ func linshiEmailGenerate() (*EmailInfo, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "linshi-email generate"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -81,7 +86,7 @@ func linshiEmailGetEmails(email string) ([]Email, error) {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", GetCurrentUA())
 	req.Header.Set("Referer", "https://www.linshi-email.com/")
 	req.Header.Set("DNT", "1")
 
@@ -91,6 +96,10 @@ func linshiEmailGetEmails(email string) ([]Email, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "linshi-email get emails"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

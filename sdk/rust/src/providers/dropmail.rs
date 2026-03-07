@@ -5,33 +5,38 @@
 use serde_json::Value;
 use crate::types::{Channel, EmailInfo, Email};
 use crate::normalize::normalize_email;
-use crate::config::http_client;
+use crate::config::{http_client, block_on, get_current_ua};
 
 const BASE_URL: &str = "https://dropmail.me/api/graphql/MY_TOKEN";
 
 fn graphql_request(query: &str, variables: Option<&Value>) -> Result<Value, String> {
-    let mut params = vec![("query", query.to_string())];
-    if let Some(vars) = variables {
-        params.push(("variables", vars.to_string()));
-    }
+    let query = query.to_string();
+    let vars = variables.cloned();
+    block_on(async {
+        let mut params = vec![("query", query.clone())];
+        if let Some(ref v) = vars {
+            params.push(("variables", v.to_string()));
+        }
 
-    let resp = http_client()
-        .post(BASE_URL)
-        .form(&params)
-        .send().map_err(|e| format!("dropmail request failed: {}", e))?;
+        let resp = http_client()
+            .post(BASE_URL)
+            .header("User-Agent", get_current_ua())
+            .form(&params)
+            .send().await.map_err(|e| format!("dropmail request failed: {}", e))?;
 
-    if !resp.status().is_success() {
-        return Err(format!("dropmail request failed: {}", resp.status()));
-    }
+        if !resp.status().is_success() {
+            return Err(format!("dropmail request failed: {}", resp.status()));
+        }
 
-    let data: Value = resp.json().map_err(|e| format!("parse failed: {}", e))?;
+        let data: Value = resp.json().await.map_err(|e| format!("parse failed: {}", e))?;
     if let Some(errors) = data["errors"].as_array() {
         if !errors.is_empty() {
             return Err(format!("GraphQL error: {}", errors[0]["message"].as_str().unwrap_or("unknown")));
         }
     }
 
-    Ok(data["data"].clone())
+        Ok(data["data"].clone())
+    })
 }
 
 pub fn generate_email() -> Result<EmailInfo, String> {

@@ -10,7 +10,7 @@
 use serde_json::Value;
 use rand::Rng;
 use crate::types::{Channel, EmailInfo, Email};
-use crate::config::http_client;
+use crate::config::{http_client, block_on, get_current_ua};
 
 const GRAPHQL_URL: &str = "https://api.maildrop.cc/graphql";
 const DOMAIN: &str = "maildrop.cc";
@@ -157,30 +157,35 @@ fn graphql_request(
     query: &str,
     variables: serde_json::Value,
 ) -> Result<Value, String> {
-    let resp = http_client()
-        .post(GRAPHQL_URL)
-        .header("Content-Type", "application/json")
-        .header("Origin", "https://maildrop.cc")
-        .header("Referer", "https://maildrop.cc/")
-        .json(&serde_json::json!({
-            "operationName": operation_name,
-            "variables": variables,
-            "query": query,
-        }))
-        .send().map_err(|e| format!("maildrop request failed: {}", e))?;
+    let op = operation_name.to_string();
+    let q = query.to_string();
+    block_on(async {
+        let resp = http_client()
+            .post(GRAPHQL_URL)
+            .header("Content-Type", "application/json")
+            .header("User-Agent", get_current_ua())
+            .header("Origin", "https://maildrop.cc")
+            .header("Referer", "https://maildrop.cc/")
+            .json(&serde_json::json!({
+                "operationName": op,
+                "variables": variables,
+                "query": q,
+            }))
+            .send().await.map_err(|e| format!("maildrop request failed: {}", e))?;
 
-    if !resp.status().is_success() {
-        return Err(format!("maildrop request failed: {}", resp.status()));
-    }
-
-    let data: Value = resp.json().map_err(|e| format!("parse failed: {}", e))?;
-    if let Some(errors) = data["errors"].as_array() {
-        if !errors.is_empty() {
-            return Err(format!("Maildrop GraphQL error: {}", errors[0]["message"].as_str().unwrap_or("unknown")));
+        if !resp.status().is_success() {
+            return Err(format!("maildrop request failed: {}", resp.status()));
         }
-    }
 
-    Ok(data["data"].clone())
+        let data: Value = resp.json().await.map_err(|e| format!("parse failed: {}", e))?;
+        if let Some(errors) = data["errors"].as_array() {
+            if !errors.is_empty() {
+                return Err(format!("Maildrop GraphQL error: {}", errors[0]["message"].as_str().unwrap_or("unknown")));
+            }
+        }
+
+        Ok(data["data"].clone())
+    })
 }
 
 pub fn generate_email() -> Result<EmailInfo, String> {

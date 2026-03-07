@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 const dropmailBaseURL = "https://dropmail.me/api/graphql/MY_TOKEN"
@@ -55,8 +58,16 @@ func dropmailGraphQLRequest(query string, variables map[string]interface{}) (jso
 		form.Set("variables", string(varsJSON))
 	}
 
+	/* tls-client 接口没有 PostForm，手动构建请求 */
+	req, err := http.NewRequest(http.MethodPost, dropmailBaseURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", GetCurrentUA())
+
 	client := HTTPClient()
-	resp, err := client.PostForm(dropmailBaseURL, form)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

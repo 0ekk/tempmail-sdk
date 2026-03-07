@@ -17,8 +17,11 @@ DEFAULT_CONFIG = RetryConfig()
 def _should_retry(error: Exception) -> bool:
     """
     判断错误是否应该重试
-    网络错误、超时、HTTP 4xx/5xx 均可重试
-    仅参数校验类错误不重试
+    以下错误类型会触发重试：
+    - 网络连接错误（connection, timeout, dns, refused, reset 等）
+    - HTTP 429 限流
+    - HTTP 4xx/5xx 服务端错误（含状态码的错误消息）
+    仅 SDK 内部参数校验类错误不重试
     """
     msg = str(error).lower()
 
@@ -37,7 +40,7 @@ def _should_retry(error: Exception) -> bool:
     if "429" in msg or "too many requests" in msg or "rate limit" in msg:
         return True
 
-    # HTTP 4xx/5xx 错误
+    # HTTP 4xx/5xx 错误（含状态码的错误消息）
     if ": 4" in msg or ": 5" in msg:
         return True
     if isinstance(error, requests.exceptions.HTTPError):
@@ -51,9 +54,9 @@ def with_retry(fn: Callable[[], T], config: Optional[RetryConfig] = None) -> T:
     带重试的操作执行器
 
     功能:
-    - 自动重试可恢复的错误（网络错误、超时、HTTP 4xx/5xx）
+    - 自动重试可恢复的错误（网络错误、超时、HTTP 4xx/5xx 等）
     - 指数退避策略避免短时间内过度请求
-    - 不可恢复的错误直接抛出
+    - 不可恢复的错误（SDK 内部参数校验错误等）直接抛出
 
     参数:
         fn:     要执行的操作函数

@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
+
+	http "github.com/bogdanfinn/fhttp"
 )
 
 const tempmailBaseURL = "https://api.tempmail.ing/api"
@@ -42,7 +43,7 @@ func tempmailGenerate(duration int) (*EmailInfo, error) {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", GetCurrentUA())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Referer", "https://tempmail.ing/")
 	req.Header.Set("DNT", "1")
@@ -53,6 +54,10 @@ func tempmailGenerate(duration int) (*EmailInfo, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "tempmail generate"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -84,7 +89,7 @@ func tempmailGetEmails(email string) ([]Email, error) {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", GetCurrentUA())
 	req.Header.Set("Referer", "https://tempmail.ing/")
 	req.Header.Set("DNT", "1")
 
@@ -94,6 +99,10 @@ func tempmailGetEmails(email string) ([]Email, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if err := checkHTTPStatus(resp, "tempmail get emails"); err != nil {
+		return nil, err
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

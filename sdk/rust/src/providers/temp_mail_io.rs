@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::sync::Mutex;
 use crate::types::{Channel, EmailInfo, Email};
 use crate::normalize::normalize_email;
-use crate::config::http_client;
+use crate::config::{http_client, block_on, get_current_ua};
 
 const BASE_URL: &str = "https://api.internal.temp-mail.io/api/v3";
 const PAGE_URL: &str = "https://temp-mail.io/en";
@@ -21,14 +21,23 @@ fn fetch_cors_header() -> String {
         }
     }
 
-    let result = (|| -> Option<String> {
+    let result = block_on(async {
         let resp = http_client()
-            .get(PAGE_URL).send().ok()?;
-        let html = resp.text().ok()?;
-        let re = regex_lite::Regex::new(r#"mobileTestingHeader\s*:\s*"([^"]+)""#).ok()?;
-        let caps = re.captures(&html)?;
-        Some(caps.get(1)?.as_str().to_string())
-    })().unwrap_or_else(|| "1".to_string());
+            .get(PAGE_URL)
+            .header("User-Agent", get_current_ua())
+            .send().await.ok();
+        if let Some(r) = resp {
+            if let Ok(html) = r.text().await {
+                let re = regex_lite::Regex::new(r#"mobileTestingHeader\s*:\s*"([^"]+)""#).ok();
+                if let Some(re) = re {
+                    if let Some(caps) = re.captures(&html) {
+                        return caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_else(|| "1".to_string());
+                    }
+                }
+            }
+        }
+        "1".to_string()
+    });
 
     if let Ok(mut guard) = CACHED_CORS.lock() {
         *guard = Some(result.clone());
@@ -38,50 +47,57 @@ fn fetch_cors_header() -> String {
 
 pub fn generate_email() -> Result<EmailInfo, String> {
     let cors = fetch_cors_header();
-    let resp = http_client()
-        .post(format!("{}/email/new", BASE_URL))
-        .header("Content-Type", "application/json")
-        .header("Application-Name", "web")
-        .header("Application-Version", "4.0.0")
-        .header("X-CORS-Header", &cors)
-        .header("origin", "https://temp-mail.io")
-        .json(&serde_json::json!({"min_name_length": 10, "max_name_length": 10}))
-        .send().map_err(|e| format!("temp-mail-io request failed: {}", e))?;
+    block_on(async {
+        let resp = http_client()
+            .post(format!("{}/email/new", BASE_URL))
+            .header("Content-Type", "application/json")
+            .header("User-Agent", get_current_ua())
+            .header("Application-Name", "web")
+            .header("Application-Version", "4.0.0")
+            .header("X-CORS-Header", &cors)
+            .header("origin", "https://temp-mail.io")
+            .json(&serde_json::json!({"min_name_length": 10, "max_name_length": 10}))
+            .send().await.map_err(|e| format!("temp-mail-io request failed: {}", e))?;
 
-    if !resp.status().is_success() {
-        return Err(format!("temp-mail-io generate failed: {}", resp.status()));
-    }
+        if !resp.status().is_success() {
+            return Err(format!("temp-mail-io generate failed: {}", resp.status()));
+        }
 
-    let data: Value = resp.json().map_err(|e| format!("parse failed: {}", e))?;
-    let email = data["email"].as_str().unwrap_or("");
-    let token = data["token"].as_str().unwrap_or("");
-    if email.is_empty() || token.is_empty() {
-        return Err("Failed to generate email".into());
-    }
+        let data: Value = resp.json().await.map_err(|e| format!("parse failed: {}", e))?;
+        let email = data["email"].as_str().unwrap_or("");
+        let token = data["token"].as_str().unwrap_or("");
+        if email.is_empty() || token.is_empty() {
+            return Err("Failed to generate email".into());
+        }
 
-    Ok(EmailInfo {
-        channel: Channel::TempMailIO,
-        email: email.to_string(),
-        token: Some(token.to_string()),
-        expires_at: None, created_at: None,
+        Ok(EmailInfo {
+            channel: Channel::TempMailIO,
+            email: email.to_string(),
+            token: Some(token.to_string()),
+            expires_at: None, created_at: None,
+        })
     })
 }
 
 pub fn get_emails(email: &str) -> Result<Vec<Email>, String> {
     let cors = fetch_cors_header();
-    let resp = http_client()
-        .get(format!("{}/email/{}/messages", BASE_URL, email))
-        .header("Application-Name", "web")
-        .header("Application-Version", "4.0.0")
-        .header("X-CORS-Header", &cors)
-        .header("origin", "https://temp-mail.io")
-        .send().map_err(|e| format!("temp-mail-io request failed: {}", e))?;
+    let email = email.to_string();
+    block_on(async {
+        let resp = http_client()
+            .get(format!("{}/email/{}/messages", BASE_URL, email))
+            .header("User-Agent", get_current_ua())
+            .header("Application-Name", "web")
+            .header("Application-Version", "4.0.0")
+            .header("X-CORS-Header", &cors)
+            .header("origin", "https://temp-mail.io")
+            .send().await.map_err(|e| format!("temp-mail-io request failed: {}", e))?;
 
-    if !resp.status().is_success() {
-        return Err(format!("temp-mail-io get emails failed: {}", resp.status()));
-    }
+        if !resp.status().is_success() {
+            return Err(format!("temp-mail-io get emails failed: {}", resp.status()));
+        }
 
-    let data: Value = resp.json().map_err(|e| format!("parse failed: {}", e))?;
-    let arr = data.as_array().cloned().unwrap_or_default();
-    Ok(arr.iter().map(|raw| normalize_email(raw, email)).collect())
+        let data: Value = resp.json().await.map_err(|e| format!("parse failed: {}", e))?;
+        let arr = data.as_array().cloned().unwrap_or_default();
+        Ok(arr.iter().map(|raw| normalize_email(raw, &email)).collect())
+    })
 }

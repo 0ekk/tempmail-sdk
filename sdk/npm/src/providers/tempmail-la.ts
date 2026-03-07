@@ -1,5 +1,6 @@
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'tempmail-la';
 const BASE_URL = 'https://tempmail.la/api';
@@ -31,7 +32,7 @@ const DEFAULT_HEADERS: Record<string, string> = {
  * 返回: { code: 0, data: { mailId, address, type, startAt, endAt } }
  */
 export async function generateEmail(): Promise<InternalEmailInfo> {
-  const response = await fetch(`${BASE_URL}/mail/create`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/mail/create`, {
     method: 'POST',
     headers: DEFAULT_HEADERS,
     body: JSON.stringify({ turnstile: '' }),
@@ -69,7 +70,7 @@ export async function getEmails(email: string): Promise<Email[]> {
 
   // 支持分页，循环获取所有邮件
   while (hasMore) {
-    const response: Response = await fetch(`${BASE_URL}/mail/box`, {
+    const response: Response = await fetchWithTimeout(`${BASE_URL}/mail/box`, {
       method: 'POST',
       headers: DEFAULT_HEADERS,
       body: JSON.stringify({ address: email, cursor }),

@@ -1,5 +1,6 @@
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'linshi-email';
 const BASE_URL = 'https://www.linshi-email.com/api/v1';
@@ -17,7 +18,7 @@ const DEFAULT_HEADERS = {
 };
 
 export async function generateEmail(): Promise<InternalEmailInfo> {
-  const response = await fetch(`${BASE_URL}/email/${API_KEY}`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/email/${API_KEY}`, {
     method: 'POST',
     headers: DEFAULT_HEADERS,
     body: JSON.stringify({}),
@@ -43,7 +44,7 @@ export async function generateEmail(): Promise<InternalEmailInfo> {
 export async function getEmails(email: string): Promise<Email[]> {
   const encodedEmail = encodeURIComponent(email);
   const timestamp = Date.now();
-  const response = await fetch(`${BASE_URL}/refreshmessage/${API_KEY}/${encodedEmail}?t=${timestamp}`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/refreshmessage/${API_KEY}/${encodedEmail}?t=${timestamp}`, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });

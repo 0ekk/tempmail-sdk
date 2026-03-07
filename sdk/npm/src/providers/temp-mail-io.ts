@@ -1,5 +1,6 @@
 import { InternalEmailInfo, Email, Channel } from '../types';
 import { normalizeEmail } from '../normalize';
+import { fetchWithTimeout } from '../retry';
 
 const CHANNEL: Channel = 'temp-mail-io';
 const BASE_URL = 'https://api.internal.temp-mail.io/api/v3';
@@ -18,7 +19,7 @@ async function fetchCorsHeader(): Promise<string> {
   if (cachedCorsHeader) return cachedCorsHeader;
 
   try {
-    const response = await fetch(PAGE_URL, {
+    const response = await fetchWithTimeout(PAGE_URL, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
       },
@@ -61,7 +62,7 @@ async function getApiHeaders(): Promise<Record<string, string>> {
  */
 export async function generateEmail(): Promise<InternalEmailInfo> {
   const headers = await getApiHeaders();
-  const response = await fetch(`${BASE_URL}/email/new`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/email/new`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ min_name_length: 10, max_name_length: 10 }),
@@ -91,7 +92,7 @@ export async function generateEmail(): Promise<InternalEmailInfo> {
  */
 export async function getEmails(email: string): Promise<Email[]> {
   const headers = await getApiHeaders();
-  const response = await fetch(`${BASE_URL}/email/${email}/messages`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/email/${email}/messages`, {
     method: 'GET',
     headers,
   });

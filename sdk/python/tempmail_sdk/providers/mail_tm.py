@@ -7,7 +7,7 @@ API: https://api.mail.tm
 import random
 import string
 from .. import http as tm_http
-from ..types import EmailInfo, Email
+from ..types import EmailInfo
 from ..normalize import normalize_email
 
 CHANNEL = "mail-tm"

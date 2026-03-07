@@ -6,7 +6,7 @@ API: https://www.linshi-email.com/api/v1
 import time
 from urllib.parse import quote
 from .. import http as tm_http
-from ..types import EmailInfo, Email
+from ..types import EmailInfo
 from ..normalize import normalize_email
 
 CHANNEL = "linshi-email"
