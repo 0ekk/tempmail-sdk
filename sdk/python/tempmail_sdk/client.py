@@ -190,7 +190,9 @@ def _get_emails_once(channel: str, email: str, token: Optional[str]) -> List[Ema
             raise ValueError("token is required for tempmail-lol channel")
         return tempmail_lol.get_emails(token, email)
     elif channel == "chatgpt-org-uk":
-        return chatgpt_org_uk.get_emails(email)
+        if not token:
+            raise ValueError("token is required for chatgpt-org-uk channel")
+        return chatgpt_org_uk.get_emails(token, email)
     elif channel == "tempmail-la":
         return tempmail_la.get_emails(email)
     elif channel == "temp-mail-io":

@@ -268,7 +268,10 @@ func getEmailsOnce(channel Channel, email string, token string) ([]Email, error)
 		return tempmailLolGetEmails(token, email)
 
 	case ChannelChatgptOrgUk:
-		return chatgptOrgUkGetEmails(email)
+		if token == "" {
+			return nil, fmt.Errorf("internal error: token missing for chatgpt-org-uk channel")
+		}
+		return chatgptOrgUkGetEmails(email, token)
 
 	case ChannelTempmailLa:
 		return tempmailLaGetEmails(email)

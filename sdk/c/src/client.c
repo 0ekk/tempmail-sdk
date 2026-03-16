@@ -158,7 +158,7 @@ tm_get_emails_result_t* tm_get_emails(const tm_email_info_t *email_info, const t
             case CHANNEL_TEMPMAIL:       emails = tm_provider_tempmail_get_emails(email_info->email, &count); break;
             case CHANNEL_LINSHI_EMAIL:   emails = tm_provider_linshi_email_get_emails(email_info->email, &count); break;
             case CHANNEL_TEMPMAIL_LOL:   emails = tm_provider_tempmail_lol_get_emails(email_info->token, email_info->email, &count); break;
-            case CHANNEL_CHATGPT_ORG_UK: emails = tm_provider_chatgpt_org_uk_get_emails(email_info->email, &count); break;
+            case CHANNEL_CHATGPT_ORG_UK: emails = tm_provider_chatgpt_org_uk_get_emails(email_info->token, email_info->email, &count); break;
             case CHANNEL_TEMPMAIL_LA:    emails = tm_provider_tempmail_la_get_emails(email_info->email, &count); break;
             case CHANNEL_TEMP_MAIL_IO:   emails = tm_provider_temp_mail_io_get_emails(email_info->email, &count); break;
             case CHANNEL_AWAMAIL:        emails = tm_provider_awamail_get_emails(email_info->token, email_info->email, &count); break;

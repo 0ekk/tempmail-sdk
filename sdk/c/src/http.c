@@ -65,6 +65,27 @@ static size_t header_callback(char *buffer, size_t size, size_t nitems, void *us
         size_t len = total - (val - buffer);
         /* 去掉末尾换行 */
         while (len > 0 && (val[len-1] == '\r' || val[len-1] == '\n')) len--;
+
+        /* 优先提取 gm_sid */
+        char *gm = strstr(val, "gm_sid=");
+        if (gm) {
+            char *end = strchr(gm, ';');
+            size_t gm_len = end ? (size_t)(end - gm) : strlen(gm);
+            char *gm_cookie = (char*)malloc(gm_len + 1);
+            if (gm_cookie) {
+                memcpy(gm_cookie, gm, gm_len);
+                gm_cookie[gm_len] = '\0';
+                if (resp->cookies) free(resp->cookies);
+                resp->cookies = gm_cookie;
+            }
+            return total;
+        }
+
+        /* 已有 gm_sid 时不覆盖 */
+        if (resp->cookies && strstr(resp->cookies, "gm_sid=") != NULL) {
+            return total;
+        }
+
         if (resp->cookies) free(resp->cookies);
         resp->cookies = (char*)malloc(len + 1);
         if (resp->cookies) {

@@ -81,7 +81,7 @@ tm_email_info_t* tm_provider_tempmail_lol_generate(const char *domain);
 tm_email_t* tm_provider_tempmail_lol_get_emails(const char *token, const char *email, int *count);
 
 tm_email_info_t* tm_provider_chatgpt_org_uk_generate(void);
-tm_email_t* tm_provider_chatgpt_org_uk_get_emails(const char *email, int *count);
+tm_email_t* tm_provider_chatgpt_org_uk_get_emails(const char *token, const char *email, int *count);
 
 tm_email_info_t* tm_provider_tempmail_la_generate(void);
 tm_email_t* tm_provider_tempmail_la_get_emails(const char *email, int *count);

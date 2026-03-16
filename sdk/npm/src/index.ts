@@ -264,7 +264,8 @@ async function getEmailsOnce(channel: Channel, email: string, token?: string): P
       if (!token) throw new Error('internal error: token missing for tempmail-lol');
       return tempmailLol.getEmails(token, email);
     case 'chatgpt-org-uk':
-      return chatgptOrgUk.getEmails(email);
+      if (!token) throw new Error('internal error: token missing for chatgpt-org-uk');
+      return chatgptOrgUk.getEmails(token, email);
     case 'tempmail-la':
       return tempmailLa.getEmails(email);
     case 'temp-mail-io':

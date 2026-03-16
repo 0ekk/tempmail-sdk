@@ -10,9 +10,13 @@ async function testGenerateEmail() {
     try {
       console.log(`Testing channel: ${channel}`);
       const emailInfo = await generateEmail({ channel });
+      if (!emailInfo) {
+        console.log('  Failed to generate email');
+        console.log();
+        continue;
+      }
       console.log(`  Channel: ${emailInfo.channel}`);
       console.log(`  Email: ${emailInfo.email}`);
-      if (emailInfo.token) console.log(`  Token: ${emailInfo.token}`);
       if (emailInfo.expiresAt) console.log(`  Expires: ${emailInfo.expiresAt}`);
       if (emailInfo.createdAt) console.log(`  Created: ${emailInfo.createdAt}`);
       console.log();
@@ -31,6 +35,10 @@ async function testGetEmails() {
   
   try {
     const emailInfo = await client.generate({ channel: 'tempmail' });
+    if (!emailInfo) {
+      console.log('Generated: null');
+      return;
+    }
     console.log(`Generated: ${emailInfo.channel} - ${emailInfo.email}`);
     
     const result = await client.getEmails();

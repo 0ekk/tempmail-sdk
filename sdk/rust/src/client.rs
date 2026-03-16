@@ -147,7 +147,10 @@ fn get_emails_once(channel: &Channel, email: &str, token: Option<&str>) -> Resul
             let t = token.ok_or("token is required for tempmail-lol")?;
             providers::tempmail_lol::get_emails(t, email)
         }
-        Channel::ChatgptOrgUk => providers::chatgpt_org_uk::get_emails(email),
+        Channel::ChatgptOrgUk => {
+            let t = token.ok_or("token is required for chatgpt-org-uk")?;
+            providers::chatgpt_org_uk::get_emails(t, email)
+        }
         Channel::TempmailLa => providers::tempmail_la::get_emails(email),
         Channel::TempMailIO => providers::temp_mail_io::get_emails(email),
         Channel::Awamail => {
