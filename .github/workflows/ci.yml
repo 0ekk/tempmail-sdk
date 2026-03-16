@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.21', '1.22', '1.23']
+        go-version: ['1.24.1']
     defaults:
       run:
         working-directory: sdk/go
@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust-version: ['stable', '1.83.0']
+        rust-version: ['stable', '1.88.0']
     defaults:
       run:
         working-directory: sdk/rust
