@@ -50,40 +50,37 @@ jobs:
           git tag "${GO_TAG}" || true
           git push origin "${GO_TAG}" || true
 
-  # 构建验证
-  verify:
-    name: 构建验证
+  # 各 SDK 并行构建验证
+  verify-go:
+    name: 验证 Go SDK
     runs-on: ubuntu-latest
     needs: [create-go-module-tag]
-    
     steps:
       - uses: actions/checkout@v4
-      
-      - name: 设置 Go 环境
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.24.1'
           cache: false
-      
-      - name: 设置 Node.js 环境
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: 设置 Rust 环境
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: 设置 Python 环境
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      
       - name: Go 构建验证
         working-directory: sdk/go
         run: |
           go vet ./...
           go build ./...
-      
+      - name: example 模块（与发布交叉编译一致）
+        working-directory: sdk/go/example
+        run: |
+          go mod tidy
+          go build -o /dev/null .
+
+  verify-npm:
+    name: 验证 Node.js SDK
+    runs-on: ubuntu-latest
+    needs: [create-go-module-tag]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: npm 构建验证
         working-directory: sdk/npm
         run: |
@@ -91,16 +88,38 @@ jobs:
           npx tsc --noEmit
           npm run build
 
+  verify-rust:
+    name: 验证 Rust SDK
+    runs-on: ubuntu-latest
+    needs: [create-go-module-tag]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - name: Rust 构建验证
         working-directory: sdk/rust
         run: cargo build
 
+  verify-python:
+    name: 验证 Python SDK
+    runs-on: ubuntu-latest
+    needs: [create-go-module-tag]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Python 构建验证
         working-directory: sdk/python
         run: |
           pip install build
           python -m build
 
+  verify-c:
+    name: 验证 C SDK
+    runs-on: ubuntu-latest
+    needs: [create-go-module-tag]
+    steps:
+      - uses: actions/checkout@v4
       - name: C 构建验证
         working-directory: sdk/c
         run: |
@@ -114,7 +133,7 @@ jobs:
   publish-npm:
     name: 发布 npm 包
     runs-on: ubuntu-latest
-    needs: [verify, release-meta]
+    needs: [verify-npm, release-meta]
     defaults:
       run:
         working-directory: sdk/npm
@@ -156,7 +175,7 @@ jobs:
   publish-github-packages:
     name: 发布到 GitHub Packages
     runs-on: ubuntu-latest
-    needs: [verify, release-meta]
+    needs: [verify-npm, release-meta]
     permissions:
       packages: write
       contents: read
@@ -207,7 +226,7 @@ jobs:
   publish-crates:
     name: 发布到 crates.io
     runs-on: ubuntu-latest
-    needs: [verify]
+    needs: [verify-rust, release-meta]
     defaults:
       run:
         working-directory: sdk/rust
@@ -235,7 +254,7 @@ jobs:
   publish-pypi:
     name: 发布到 PyPI
     runs-on: ubuntu-latest
-    needs: [verify]
+    needs: [verify-python, release-meta]
     defaults:
       run:
         working-directory: sdk/python
@@ -274,11 +293,27 @@ jobs:
           name: python-wheel
           path: sdk/python/dist/*.whl
 
-  # Go SDK 多平台二进制构建
+  # Go SDK 多平台二进制构建（矩阵并行）
   build-go-binaries:
-    name: 构建 Go 二进制
+    name: 构建 Go 二进制 (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest
-    needs: [verify]
+    needs: [verify-go]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -289,56 +324,44 @@ jobs:
           go-version: '1.24.1'
           cache: false
 
-      - name: 获取版本号
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: 交叉编译多平台二进制
+      - name: 交叉编译
         working-directory: sdk/go/example
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
         run: |
           go mod tidy
-          platforms=(
-            "linux/amd64"
-            "linux/arm64"
-            "darwin/amd64"
-            "darwin/arm64"
-            "windows/amd64"
-            "windows/arm64"
-          )
-          for platform in "${platforms[@]}"; do
-            GOOS="${platform%/*}"
-            GOARCH="${platform#*/}"
-            output="tempmail-example-${GOOS}-${GOARCH}"
-            if [ "$GOOS" = "windows" ]; then
-              output="${output}.exe"
-            fi
-            echo "构建 ${GOOS}/${GOARCH}..."
-            CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-s -w" -o "$output" .
-          done
+          output="tempmail-example-${GOOS}-${GOARCH}"
+          if [ "$GOOS" = "windows" ]; then
+            output="${output}.exe"
+          fi
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o "$output" .
 
       - name: 打包 zip
         working-directory: sdk/go/example
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p dist
-          for bin in tempmail-example-*; do
-            name="${bin%.*}"
-            if [[ "$bin" == *.exe ]]; then
-              name="${bin%.exe}"
-            fi
-            zip "dist/${name}.zip" "$bin" ../README.md
-          done
+          bin="tempmail-example-${GOOS}-${GOARCH}"
+          if [ "$GOOS" = "windows" ]; then
+            bin="${bin}.exe"
+          fi
+          name="tempmail-example-${GOOS}-${GOARCH}"
+          zip "dist/${name}.zip" "$bin" ../README.md
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: go-binaries
+          name: go-binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: sdk/go/example/dist/*.zip
 
   # Rust SDK 多平台二进制构建
   build-rust-binaries:
     name: 构建 Rust 二进制 (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    needs: [verify]
+    needs: [verify-rust]
     strategy:
       matrix:
         include:
@@ -412,7 +435,7 @@ jobs:
   build-c-sdk:
     name: 构建 C SDK (${{ matrix.artifact }})
     runs-on: ${{ matrix.os }}
-    needs: [verify]
+    needs: [verify-c]
     strategy:
       matrix:
         include:
@@ -439,32 +462,64 @@ jobs:
 
       - name: 安装依赖 (Windows)
         if: runner.os == 'Windows'
-        run: vcpkg install curl:x64-windows
+        shell: pwsh
+        env:
+          VCPKG_DEFAULT_TRIPLET: x64-windows
+        run: |
+          if (-not $env:VCPKG_INSTALLATION_ROOT) {
+            Write-Error "VCPKG_INSTALLATION_ROOT 未设置，无法使用预装 vcpkg"
+            exit 1
+          }
+          $vcpkg = Join-Path $env:VCPKG_INSTALLATION_ROOT 'vcpkg.exe'
+          & $vcpkg install curl:x64-windows
 
       - name: 下载 cJSON
+        shell: bash
         run: |
-          curl -L -o vendor/cJSON.h https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.h
-          curl -L -o vendor/cJSON.c https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.c
+          curl -fsSL -o vendor/cJSON.h https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.h
+          curl -fsSL -o vendor/cJSON.c https://raw.githubusercontent.com/DaveGamble/cJSON/master/cJSON.c
 
-      - name: CMake 配置与构建 (Unix)
-        if: runner.os != 'Windows'
+      # macOS：Homebrew 的 curl 为 keg-only，需 CMAKE_PREFIX_PATH 才能让 FindCURL 找到
+      - name: CMake 配置与构建 (Linux)
+        if: runner.os == 'Linux'
         run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      - name: CMake 配置与构建 (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          export CMAKE_PREFIX_PATH="$(brew --prefix curl)"
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
           cmake --build build
 
       - name: CMake 配置与构建 (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          VCPKG_DEFAULT_TRIPLET: x64-windows
         run: |
-          cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT 'scripts/buildsystems/vcpkg.cmake'
+          cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE="$toolchain" -A x64
           cmake --build build --config Release
 
       - name: 打包产物 (Unix)
         if: runner.os != 'Windows'
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p pkg/include pkg/lib pkg/bin
           cp include/*.h pkg/include/
-          cp build/libtempmail_sdk.a pkg/lib/
-          cp build/tempmail_example pkg/bin/
+          LIBA="$(find build -name 'libtempmail_sdk.a' | head -n1)"
+          BIN="$(find build -type f -name 'tempmail_example' | head -n1)"
+          if [ -z "$LIBA" ] || [ ! -f "$LIBA" ]; then
+            echo "::error::未找到 libtempmail_sdk.a"; find build -type f || true; exit 1
+          fi
+          if [ -z "$BIN" ] || [ ! -f "$BIN" ]; then
+            echo "::error::未找到 tempmail_example"; find build -type f || true; exit 1
+          fi
+          cp "$LIBA" pkg/lib/
+          cp "$BIN" pkg/bin/tempmail_example
           chmod +x pkg/bin/tempmail_example
           cp README.md pkg/
           cd pkg && zip -r ../${{ matrix.artifact }}.zip .
@@ -473,10 +528,18 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p pkg/include pkg/lib pkg/bin
           cp include/*.h pkg/include/
-          cp build/Release/tempmail_sdk.lib pkg/lib/ 2>/dev/null || cp build/tempmail_sdk.lib pkg/lib/ 2>/dev/null || true
-          cp build/Release/tempmail_example.exe pkg/bin/ 2>/dev/null || cp build/tempmail_example.exe pkg/bin/ 2>/dev/null || true
+          for f in build/Release/tempmail_sdk.lib build/Release/tempmail_example.exe; do
+            if [ ! -f "$f" ]; then
+              echo "::error::缺少构建产物: $f"
+              find build -type f || true
+              exit 1
+            fi
+          done
+          cp build/Release/tempmail_sdk.lib pkg/lib/
+          cp build/Release/tempmail_example.exe pkg/bin/
           cp README.md pkg/
           cd pkg && 7z a ../${{ matrix.artifact }}.zip .
 
