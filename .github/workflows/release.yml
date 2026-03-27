@@ -6,6 +6,25 @@ on:
       - 'v*'
 
 jobs:
+  # 从 tag 解析版本与是否为 semver 预发布（如 v1.0.0-beta.1 → 测试版）
+  release-meta:
+    name: 解析发布元数据
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+    steps:
+      - id: meta
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # 主版本后带 - 预发布段（npm/PEP440/cargo 均支持），如 1.0.0-beta.1、1.0.0-rc.0
+          if echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+-'; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # 创建 Go 子目录模块标签
   # Go modules 要求子目录模块使用 sdk/go/vX.X.X 格式的标签
   # 否则 go get / go mod tidy 无法正确解析版本
@@ -95,7 +114,7 @@ jobs:
   publish-npm:
     name: 发布 npm 包
     runs-on: ubuntu-latest
-    needs: [verify]
+    needs: [verify, release-meta]
     defaults:
       run:
         working-directory: sdk/npm
@@ -123,7 +142,12 @@ jobs:
         run: npm run build
       
       - name: 发布到 npm
-        run: npm publish --access public
+        run: |
+          if [ "${{ needs.release-meta.outputs.is_prerelease }}" = "true" ]; then
+            npm publish --access public --tag beta
+          else
+            npm publish --access public
+          fi
         continue-on-error: true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -132,7 +156,7 @@ jobs:
   publish-github-packages:
     name: 发布到 GitHub Packages
     runs-on: ubuntu-latest
-    needs: [verify]
+    needs: [verify, release-meta]
     permissions:
       packages: write
       contents: read
@@ -171,7 +195,12 @@ jobs:
         run: npm run build
       
       - name: 发布到 GitHub Packages
-        run: npm publish --access public
+        run: |
+          if [ "${{ needs.release-meta.outputs.is_prerelease }}" = "true" ]; then
+            npm publish --access public --tag beta
+          else
+            npm publish --access public
+          fi
         continue-on-error: true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -460,7 +489,7 @@ jobs:
   create-release:
     name: 创建 GitHub Release
     runs-on: ubuntu-latest
-    needs: [publish-npm, publish-github-packages, publish-crates, publish-pypi, build-go-binaries, build-rust-binaries, build-c-sdk]
+    needs: [release-meta, publish-npm, publish-github-packages, publish-crates, publish-pypi, build-go-binaries, build-rust-binaries, build-c-sdk]
     permissions:
       contents: write
     
@@ -577,6 +606,6 @@ jobs:
             | `maildrop` | maildrop.cc |
             | `smail-pw` | smail.pw |
           draft: false
-          prerelease: false
+          prerelease: ${{ needs.release-meta.outputs.is_prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

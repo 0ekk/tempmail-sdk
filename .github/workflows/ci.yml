@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      note:
+        description: '构建说明（可选，仅用于 Run 备注）'
+        required: false
+        default: ''
 
 jobs:
   # Go SDK 构建检查
@@ -181,3 +187,58 @@ jobs:
 
       - name: 构建
         run: cmake --build build
+
+  # 手动触发：打 npm tgz / Python wheel 等测试版产物（不上传 registry）
+  prerelease-artifacts:
+    name: 测试版包产物（workflow_dispatch）
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 构建 npm 包（tgz）
+        working-directory: sdk/npm
+        run: |
+          npm install
+          npx tsc --noEmit
+          npm run build
+          npm pack
+          mkdir -p ../_artifact_npm
+          mv *.tgz ../_artifact_npm/
+
+      - name: 打包 npm dist 目录（便于本地链式引用）
+        working-directory: sdk/npm
+        run: |
+          zip -r ../_artifact_npm/npm-dist.zip dist package.json README.md 2>/dev/null || zip -r ../_artifact_npm/npm-dist.zip dist package.json
+
+      - name: 构建 Python wheel / sdist
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+          pip install -e ".[dev]"
+          python -m build
+          mkdir -p ../_artifact_python
+          cp dist/* ../_artifact_python/
+
+      - name: 上传 npm 测试版产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: prerelease-npm-${{ github.run_number }}
+          path: sdk/_artifact_npm/*
+
+      - name: 上传 Python 测试版产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: prerelease-python-${{ github.run_number }}
+          path: sdk/_artifact_python/*
