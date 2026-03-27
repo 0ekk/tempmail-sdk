@@ -10,6 +10,7 @@ import * as guerrillamail from './providers/guerrillamail';
 import * as maildropProvider from './providers/maildrop';
 import * as smailPw from './providers/smail-pw';
 import * as boomlify from './providers/boomlify';
+import * as minmail from './providers/minmail';
 import { Channel, EmailInfo, InternalEmailInfo, Email, EmailAttachment, GetEmailsResult, GenerateEmailOptions, GetEmailsOptions } from './types';
 import { withRetry, RetryOptions } from './retry';
 import { logger } from './logger';
@@ -50,10 +51,11 @@ const providers = {
   'maildrop': maildropProvider,
   'smail-pw': smailPw,
   'boomlify': boomlify,
+  'minmail': minmail,
 };
 
 /** 所有支持的渠道列表，用于随机选择和遍历 */
-const allChannels: Channel[] = ['tempmail', 'linshi-email', 'tempmail-lol', 'chatgpt-org-uk', 'temp-mail-io', 'awamail', 'mail-tm', 'dropmail', 'guerrillamail', 'maildrop', 'smail-pw', 'boomlify'];
+const allChannels: Channel[] = ['tempmail', 'linshi-email', 'tempmail-lol', 'chatgpt-org-uk', 'temp-mail-io', 'awamail', 'mail-tm', 'dropmail', 'guerrillamail', 'maildrop', 'smail-pw', 'boomlify', 'minmail'];
 
 /**
  * 渠道信息，包含渠道标识、显示名称和对应网站
@@ -81,6 +83,7 @@ const channelInfoMap: Record<Channel, ChannelInfo> = {
   'maildrop': { channel: 'maildrop', name: 'Maildrop', website: 'maildrop.cc' },
   'smail-pw': { channel: 'smail-pw', name: 'Smail.pw', website: 'smail.pw' },
   'boomlify': { channel: 'boomlify', name: 'Boomlify', website: 'boomlify.com' },
+  'minmail': { channel: 'minmail', name: 'MinMail', website: 'minmail.app' },
 };
 
 /**
@@ -208,6 +211,8 @@ async function generateEmailOnce(channel: Channel, options: GenerateEmailOptions
       return smailPw.generateEmail();
     case 'boomlify':
       return boomlify.generateEmail();
+    case 'minmail':
+      return minmail.generateEmail();
     default:
       throw new Error(`Unknown channel: ${channel}`);
   }
@@ -308,6 +313,9 @@ async function getEmailsOnce(channel: Channel, email: string, token?: string): P
       return smailPw.getEmails(token, email);
     case 'boomlify':
       return boomlify.getEmails(email);
+    case 'minmail':
+      if (!token) throw new Error('internal error: token missing for minmail');
+      return minmail.getEmails(email, token);
     default:
       throw new Error(`Unknown channel: ${channel}`);
   }
