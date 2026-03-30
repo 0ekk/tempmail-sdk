@@ -14,7 +14,7 @@ from .retry import with_retry
 from .logger import get_logger
 from .providers import (
     tempmail, linshi_email, tempmail_lol, chatgpt_org_uk,
-    temp_mail_io, awamail, mail_tm,
+    temp_mail_io, awamail, temporary_email_org, mail_tm,
     dropmail, guerrillamail, maildrop, smail_pw,
     boomlify, minmail, vip_215,
 )
@@ -22,7 +22,7 @@ from .providers import (
 # 所有支持的渠道列表
 ALL_CHANNELS = [
     "tempmail", "linshi-email", "tempmail-lol", "chatgpt-org-uk",
-    "temp-mail-io", "awamail", "mail-tm",
+    "temp-mail-io", "awamail", "temporary-email-org", "mail-tm",
     "dropmail", "guerrillamail", "maildrop", "smail-pw",
     "boomlify", "minmail", "vip-215",
 ]
@@ -122,6 +122,8 @@ def _generate_email_once(channel: str, options: GenerateEmailOptions) -> EmailIn
         return temp_mail_io.generate_email()
     elif channel == "awamail":
         return awamail.generate_email()
+    elif channel == "temporary-email-org":
+        return temporary_email_org.generate_email()
     elif channel == "mail-tm":
         return mail_tm.generate_email()
     elif channel == "dropmail":
@@ -212,6 +214,10 @@ def _get_emails_once(channel: str, email: str, token: Optional[str]) -> List[Ema
         if not token:
             raise ValueError("token is required for awamail channel")
         return awamail.get_emails(token, email)
+    elif channel == "temporary-email-org":
+        if not token:
+            raise ValueError("token is required for temporary-email-org channel")
+        return temporary_email_org.get_emails(token, email)
     elif channel == "mail-tm":
         if not token:
             raise ValueError("token is required for mail-tm channel")

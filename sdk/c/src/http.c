@@ -81,16 +81,37 @@ static size_t header_callback(char *buffer, size_t size, size_t nitems, void *us
             return total;
         }
 
-        /* 已有 gm_sid 时不覆盖 */
+        /* 已有 gm_sid 时不追加其他 Cookie（与 guerrillamail 行为一致） */
         if (resp->cookies && strstr(resp->cookies, "gm_sid=") != NULL) {
             return total;
         }
 
-        if (resp->cookies) free(resp->cookies);
-        resp->cookies = (char*)malloc(len + 1);
-        if (resp->cookies) {
-            memcpy(resp->cookies, val, len);
-            resp->cookies[len] = '\0';
+        /* 仅取 name=value（第一个分号前），多条 Set-Cookie 用 "; " 拼接 */
+        char *semi = strchr(val, ';');
+        size_t nvlen = semi ? (size_t)(semi - val) : len;
+        while (nvlen > 0 && (val[nvlen - 1] == ' ' || val[nvlen - 1] == '\t')) nvlen--;
+
+        char *nv = (char*)malloc(nvlen + 1);
+        if (!nv) return total;
+        memcpy(nv, val, nvlen);
+        nv[nvlen] = '\0';
+
+        if (resp->cookies && resp->cookies[0] != '\0') {
+            size_t oldlen = strlen(resp->cookies);
+            size_t newlen = oldlen + 2 + nvlen;
+            char *merged = (char*)malloc(newlen + 1);
+            if (merged) {
+                memcpy(merged, resp->cookies, oldlen);
+                merged[oldlen] = ';';
+                merged[oldlen + 1] = ' ';
+                memcpy(merged + oldlen + 2, nv, nvlen + 1);
+                free(resp->cookies);
+                resp->cookies = merged;
+            }
+            free(nv);
+        } else {
+            if (resp->cookies) free(resp->cookies);
+            resp->cookies = nv;
         }
     }
     return total;

@@ -29,6 +29,7 @@ typedef enum {
     CHANNEL_BOOMLIFY,
     CHANNEL_MINMAIL,
     CHANNEL_VIP_215,
+    CHANNEL_TEMPORARY_EMAIL_ORG,
     CHANNEL_COUNT,       /* 渠道总数 */
     CHANNEL_RANDOM = -1, /* 随机选择 */
 } tm_channel_t;

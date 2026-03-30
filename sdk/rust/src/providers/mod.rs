@@ -9,6 +9,7 @@ pub mod tempmail_lol;
 pub mod chatgpt_org_uk;
 pub mod temp_mail_io;
 pub mod awamail;
+pub mod temporary_email_org;
 pub mod mail_tm;
 pub mod dropmail;
 pub mod guerrillamail;

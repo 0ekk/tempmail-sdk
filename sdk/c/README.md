@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-临时邮箱 SDK（C），支持 **14** 个邮箱服务提供商，所有渠道返回**统一标准化格式**（与各语言 SDK 及根目录 README 一致）。
+临时邮箱 SDK（C），支持 **15** 个邮箱服务提供商，所有渠道返回**统一标准化格式**（与各语言 SDK 及根目录 README 一致）。
 
 ## 依赖
 
@@ -47,6 +47,7 @@ cmake --build build
 | chatgpt-org-uk | `CHANNEL_CHATGPT_ORG_UK` | mail.chatgpt.org.uk | ✅ | Inbox Token 等由 SDK 封装 |
 | temp-mail-io | `CHANNEL_TEMP_MAIL_IO` | temp-mail.io | - | |
 | awamail | `CHANNEL_AWAMAIL` | awamail.com | ✅ | Session Cookie 自动管理 |
+| temporary-email-org | `CHANNEL_TEMPORARY_EMAIL_ORG` | temporary-email.org | ✅ | `GET /zh/messages` Cookie + XHR |
 | mail-tm | `CHANNEL_MAIL_TM` | mail.tm | ✅ | 自动注册，Bearer Token |
 | dropmail | `CHANNEL_DROPMAIL` | dropmail.me | ✅ | GraphQL |
 | guerrillamail | `CHANNEL_GUERRILLAMAIL` | guerrillamail.com | ✅ | 公开 JSON API |

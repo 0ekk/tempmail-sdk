@@ -30,6 +30,7 @@ add_library(tempmail_sdk STATIC
     src/providers/boomlify.c
     src/providers/minmail.c
     src/providers/vip_215.c
+    src/providers/temporary_email_org.c
     vendor/cJSON.c
 )
 

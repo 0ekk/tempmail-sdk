@@ -3,6 +3,7 @@
  * 将各提供商返回的原始邮件数据标准化为统一的 Email 格式
  */
 
+use chrono::{NaiveDateTime, TimeZone, Utc};
 use serde_json::Value;
 use crate::types::{Email, EmailAttachment};
 
@@ -19,7 +20,7 @@ pub fn normalize_email(raw: &Value, recipient_email: &str) -> Email {
 
     Email {
         id: get_str(raw, &["id", "eid", "_id", "mailboxId", "messageId", "mail_id"]),
-        from_addr: get_str(raw, &["from_address", "address_from", "from", "messageFrom", "sender"]),
+        from_addr: get_str(raw, &["from_address", "address_from", "from_email", "from", "messageFrom", "sender"]),
         to: {
             let t = get_str(raw, &["to", "to_address", "name_to", "email_address", "address"]);
             if t.is_empty() { recipient_email.to_string() } else { t }
@@ -68,10 +69,13 @@ fn get_str(raw: &Value, keys: &[&str]) -> String {
 
 /// 提取并统一日期格式
 fn normalize_date(raw: &Value) -> String {
-    for key in &["received_at", "created_at", "createdAt", "date"] {
+    for key in &["received_at", "receivedAt", "created_at", "createdAt", "date"] {
         if let Some(v) = raw.get(key) {
             if let Some(s) = v.as_str() {
                 if !s.is_empty() {
+                    if let Ok(dt) = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S") {
+                        return Utc.from_utc_datetime(&dt).to_rfc3339();
+                    }
                     return s.to_string();
                 }
             }
@@ -124,6 +128,11 @@ fn normalize_is_read(raw: &Value) -> bool {
         }
     }
     if let Some(v) = raw.get("is_read") {
+        if let Some(b) = v.as_bool() { return b; }
+        if let Some(n) = v.as_f64() { return n as i64 != 0; }
+        if let Some(s) = v.as_str() { return s == "1"; }
+    }
+    if let Some(v) = raw.get("is_seen") {
         if let Some(b) = v.as_bool() { return b; }
         if let Some(n) = v.as_f64() { return n as i64 != 0; }
         if let Some(s) = v.as_str() { return s == "1"; }

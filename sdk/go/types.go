@@ -7,20 +7,21 @@ package tempemail
 type Channel string
 
 const (
-	ChannelTempmail      Channel = "tempmail"       // tempmail.ing
-	ChannelLinshiEmail   Channel = "linshi-email"   // linshi-email.com
-	ChannelTempmailLol   Channel = "tempmail-lol"   // tempmail.lol
-	ChannelChatgptOrgUk  Channel = "chatgpt-org-uk" // mail.chatgpt.org.uk
-	ChannelTempMailIO    Channel = "temp-mail-io"   // temp-mail.io
-	ChannelAwamail       Channel = "awamail"        // awamail.com
-	ChannelMailTm        Channel = "mail-tm"        // mail.tm
-	ChannelDropmail      Channel = "dropmail"       // dropmail.me
-	ChannelGuerrillaMail Channel = "guerrillamail"  // guerrillamail.com
-	ChannelMaildrop      Channel = "maildrop"       // maildrop.cc
-	ChannelSmailPw       Channel = "smail-pw"       // smail.pw
-	ChannelBoomlify      Channel = "boomlify"       // boomlify.com
-	ChannelMinmail       Channel = "minmail"        // minmail.app
-	ChannelVip215        Channel = "vip-215"        // vip.215.im
+	ChannelTempmail          Channel = "tempmail"            // tempmail.ing
+	ChannelLinshiEmail       Channel = "linshi-email"        // linshi-email.com
+	ChannelTempmailLol       Channel = "tempmail-lol"        // tempmail.lol
+	ChannelChatgptOrgUk      Channel = "chatgpt-org-uk"      // mail.chatgpt.org.uk
+	ChannelTempMailIO        Channel = "temp-mail-io"        // temp-mail.io
+	ChannelAwamail           Channel = "awamail"             // awamail.com
+	ChannelTemporaryEmailOrg Channel = "temporary-email-org" // temporary-email.org
+	ChannelMailTm            Channel = "mail-tm"             // mail.tm
+	ChannelDropmail          Channel = "dropmail"            // dropmail.me
+	ChannelGuerrillaMail     Channel = "guerrillamail"       // guerrillamail.com
+	ChannelMaildrop          Channel = "maildrop"            // maildrop.cc
+	ChannelSmailPw           Channel = "smail-pw"            // smail.pw
+	ChannelBoomlify          Channel = "boomlify"            // boomlify.com
+	ChannelMinmail           Channel = "minmail"             // minmail.app
+	ChannelVip215            Channel = "vip-215"             // vip.215.im
 )
 
 /*

@@ -66,7 +66,7 @@ function normalizeId(raw: any): string {
  * 候选字段: from_address, address_from, from, messageFrom, sender
  */
 function normalizeFrom(raw: any): string {
-  return raw.from_address || raw.address_from || raw.from || raw.messageFrom || raw.sender || '';
+  return raw.from_address || raw.address_from || raw.from_email || raw.from || raw.messageFrom || raw.sender || '';
 }
 
 /**
@@ -109,6 +109,7 @@ function normalizeHtml(raw: any): string {
 function normalizeDate(raw: any): string {
   try {
     if (raw.received_at) return new Date(raw.received_at).toISOString();
+    if (raw.receivedAt) return new Date(String(raw.receivedAt).replace(' ', 'T')).toISOString();
     if (raw.created_at) return new Date(raw.created_at).toISOString();
     if (raw.createdAt) return new Date(raw.createdAt).toISOString();
     if (raw.date) {
@@ -132,6 +133,8 @@ function normalizeIsRead(raw: any): boolean {
   if (typeof raw.seen === 'boolean') return raw.seen;
   if (typeof raw.read === 'boolean') return raw.read;
   if (typeof raw.isRead === 'boolean') return raw.isRead;
+  if (typeof raw.is_seen === 'number') return raw.is_seen === 1;
+  if (typeof raw.is_seen === 'string') return raw.is_seen === '1';
   if (typeof raw.is_read === 'number') return raw.is_read === 1;
   if (typeof raw.is_read === 'string') return raw.is_read === '1';
   if (typeof raw.is_read === 'boolean') return raw.is_read;

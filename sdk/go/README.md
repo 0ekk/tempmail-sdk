@@ -3,7 +3,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/XxxXTeam/tempmail-sdk/sdk/go.svg)](https://pkg.go.dev/github.com/XxxXTeam/tempmail-sdk/sdk/go)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Go 语言临时邮箱 SDK，支持 **14** 个邮箱服务提供商，所有渠道返回**统一标准化格式**。
+Go 语言临时邮箱 SDK，支持 **15** 个邮箱服务提供商，所有渠道返回**统一标准化格式**。
 
 ## 安装
 
@@ -21,6 +21,7 @@ go get github.com/XxxXTeam/tempmail-sdk/sdk/go
 | `chatgpt-org-uk` | mail.chatgpt.org.uk | `ChannelChatgptOrgUk` | Inbox Token 等请求头已封装 |
 | `temp-mail-io` | temp-mail.io | `ChannelTempMailIO` | |
 | `awamail` | awamail.com | `ChannelAwamail` | Session Cookie 自动管理 |
+| `temporary-email-org` | temporary-email.org | `ChannelTemporaryEmailOrg` | `GET /zh/messages` Cookie + XHR 收信 |
 | `mail-tm` | mail.tm | `ChannelMailTm` | 自动注册（`api.mail.tm`），Bearer Token |
 | `dropmail` | dropmail.me | `ChannelDropmail` | GraphQL，Session ID |
 | `guerrillamail` | guerrillamail.com | `ChannelGuerrillaMail` | 公开 JSON API |

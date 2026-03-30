@@ -3,7 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/tempmail-sdk.svg)](https://crates.io/crates/tempmail-sdk)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-临时邮箱 SDK（Rust），支持 **14** 个邮箱服务提供商，所有渠道返回**统一标准化格式**。
+临时邮箱 SDK（Rust），支持 **15** 个邮箱服务提供商，所有渠道返回**统一标准化格式**。
 
 ## 安装
 
@@ -27,6 +27,7 @@ tempmail-sdk = { git = "https://github.com/XxxXTeam/tempmail-sdk", subdirectory 
 | `ChatgptOrgUk` | mail.chatgpt.org.uk | ✅ | Inbox Token 等由 SDK 封装 |
 | `TempMailIO` | temp-mail.io | - | |
 | `Awamail` | awamail.com | ✅ | Session Cookie 自动管理 |
+| `TemporaryEmailOrg` | temporary-email.org | ✅ | `GET /zh/messages` Cookie + XHR 收信 |
 | `MailTm` | mail.tm | ✅ | 自动注册账号获取 Bearer Token |
 | `Dropmail` | dropmail.me | ✅ | GraphQL API |
 | `GuerrillaMail` | guerrillamail.com | ✅ | 公开 JSON API |

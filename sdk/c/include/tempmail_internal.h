@@ -112,4 +112,7 @@ void tm_vip215_module_cleanup(void);
 tm_email_info_t* tm_provider_vip215_generate(void);
 tm_email_t* tm_provider_vip215_get_emails(const char *token, const char *email, int *count);
 
+tm_email_info_t* tm_provider_temporary_email_org_generate(void);
+tm_email_t* tm_provider_temporary_email_org_get_emails(const char *token, const char *email, int *count);
+
 #endif /* TEMPMAIL_INTERNAL_H */

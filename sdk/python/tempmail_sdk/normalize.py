@@ -66,7 +66,7 @@ def _normalize_id(raw: Dict[str, Any]) -> str:
 
 def _normalize_from(raw: Dict[str, Any]) -> str:
     """提取发件人地址"""
-    return _get_str(raw, "from_address", "address_from", "from", "messageFrom", "sender")
+    return _get_str(raw, "from_address", "address_from", "from_email", "from", "messageFrom", "sender")
 
 
 def _normalize_to(raw: Dict[str, Any], recipient_email: str) -> str:
@@ -96,14 +96,18 @@ def _normalize_date(raw: Dict[str, Any]) -> str:
     候选字段: received_at, created_at, createdAt, date, timestamp, e_date
     支持字符串日期、秒级时间戳、毫秒级时间戳多种格式
     """
-    for key in ("received_at", "created_at", "createdAt", "date"):
+    for key in ("received_at", "receivedAt", "created_at", "createdAt", "date"):
         val = raw.get(key)
         if val is not None:
             if isinstance(val, str) and val:
                 try:
                     return datetime.fromisoformat(val.replace("Z", "+00:00")).isoformat()
                 except (ValueError, TypeError):
-                    return val
+                    try:
+                        dt = datetime.strptime(val, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                        return dt.isoformat()
+                    except (ValueError, TypeError):
+                        return val
             elif isinstance(val, (int, float)) and val > 0:
                 try:
                     if val > 1e12:
@@ -137,6 +141,15 @@ def _normalize_is_read(raw: Dict[str, Any]) -> bool:
             return val
 
     val = raw.get("is_read")
+    if val is not None:
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return int(val) != 0
+        if isinstance(val, str):
+            return val == "1"
+
+    val = raw.get("is_seen")
     if val is not None:
         if isinstance(val, bool):
             return val

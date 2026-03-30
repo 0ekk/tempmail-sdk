@@ -28,6 +28,7 @@ static const tm_channel_info_t g_channel_infos[] = {
     { CHANNEL_BOOMLIFY,       "Boomlify",        "boomlify.com" },
     { CHANNEL_MINMAIL,        "MinMail",         "minmail.app" },
     { CHANNEL_VIP_215,        "VIP 215",         "vip.215.im" },
+    { CHANNEL_TEMPORARY_EMAIL_ORG, "Temporary Email", "temporary-email.org" },
 };
 
 const tm_channel_info_t* tm_list_channels(int *count) {
@@ -188,6 +189,10 @@ tm_get_emails_result_t* tm_get_emails(const tm_email_info_t *email_info, const t
             case CHANNEL_VIP_215:
                 if (!email_info->token) { count = -1; break; }
                 emails = tm_provider_vip215_get_emails(email_info->token, email_info->email, &count);
+                break;
+            case CHANNEL_TEMPORARY_EMAIL_ORG:
+                if (!email_info->token) { count = -1; break; }
+                emails = tm_provider_temporary_email_org_get_emails(email_info->token, email_info->email, &count);
                 break;
             default: break;
         }

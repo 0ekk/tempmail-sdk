@@ -13,6 +13,7 @@ var allChannels = []Channel{
 	ChannelChatgptOrgUk,
 	ChannelTempMailIO,
 	ChannelAwamail,
+	ChannelTemporaryEmailOrg,
 	ChannelMailTm,
 	ChannelDropmail,
 	ChannelGuerrillaMail,
@@ -37,20 +38,21 @@ type ChannelInfo struct {
 
 /* 渠道信息映射表 */
 var channelInfoMap = map[Channel]ChannelInfo{
-	ChannelTempmail:      {Channel: ChannelTempmail, Name: "TempMail", Website: "tempmail.ing"},
-	ChannelLinshiEmail:   {Channel: ChannelLinshiEmail, Name: "临时邮箱", Website: "linshi-email.com"},
-	ChannelTempmailLol:   {Channel: ChannelTempmailLol, Name: "TempMail LOL", Website: "tempmail.lol"},
-	ChannelChatgptOrgUk:  {Channel: ChannelChatgptOrgUk, Name: "ChatGPT Mail", Website: "mail.chatgpt.org.uk"},
-	ChannelTempMailIO:    {Channel: ChannelTempMailIO, Name: "Temp Mail IO", Website: "temp-mail.io"},
-	ChannelAwamail:       {Channel: ChannelAwamail, Name: "AwaMail", Website: "awamail.com"},
-	ChannelMailTm:        {Channel: ChannelMailTm, Name: "Mail.tm", Website: "mail.tm"},
-	ChannelDropmail:      {Channel: ChannelDropmail, Name: "DropMail", Website: "dropmail.me"},
-	ChannelGuerrillaMail: {Channel: ChannelGuerrillaMail, Name: "Guerrilla Mail", Website: "guerrillamail.com"},
-	ChannelMaildrop:      {Channel: ChannelMaildrop, Name: "Maildrop", Website: "maildrop.cc"},
-	ChannelSmailPw:       {Channel: ChannelSmailPw, Name: "Smail.pw", Website: "smail.pw"},
-	ChannelBoomlify:      {Channel: ChannelBoomlify, Name: "Boomlify", Website: "boomlify.com"},
-	ChannelMinmail:       {Channel: ChannelMinmail, Name: "MinMail", Website: "minmail.app"},
-	ChannelVip215:        {Channel: ChannelVip215, Name: "VIP 215", Website: "vip.215.im"},
+	ChannelTempmail:          {Channel: ChannelTempmail, Name: "TempMail", Website: "tempmail.ing"},
+	ChannelLinshiEmail:       {Channel: ChannelLinshiEmail, Name: "临时邮箱", Website: "linshi-email.com"},
+	ChannelTempmailLol:       {Channel: ChannelTempmailLol, Name: "TempMail LOL", Website: "tempmail.lol"},
+	ChannelChatgptOrgUk:      {Channel: ChannelChatgptOrgUk, Name: "ChatGPT Mail", Website: "mail.chatgpt.org.uk"},
+	ChannelTempMailIO:        {Channel: ChannelTempMailIO, Name: "Temp Mail IO", Website: "temp-mail.io"},
+	ChannelAwamail:           {Channel: ChannelAwamail, Name: "AwaMail", Website: "awamail.com"},
+	ChannelTemporaryEmailOrg: {Channel: ChannelTemporaryEmailOrg, Name: "Temporary Email", Website: "temporary-email.org"},
+	ChannelMailTm:            {Channel: ChannelMailTm, Name: "Mail.tm", Website: "mail.tm"},
+	ChannelDropmail:          {Channel: ChannelDropmail, Name: "DropMail", Website: "dropmail.me"},
+	ChannelGuerrillaMail:     {Channel: ChannelGuerrillaMail, Name: "Guerrilla Mail", Website: "guerrillamail.com"},
+	ChannelMaildrop:          {Channel: ChannelMaildrop, Name: "Maildrop", Website: "maildrop.cc"},
+	ChannelSmailPw:           {Channel: ChannelSmailPw, Name: "Smail.pw", Website: "smail.pw"},
+	ChannelBoomlify:          {Channel: ChannelBoomlify, Name: "Boomlify", Website: "boomlify.com"},
+	ChannelMinmail:           {Channel: ChannelMinmail, Name: "MinMail", Website: "minmail.app"},
+	ChannelVip215:            {Channel: ChannelVip215, Name: "VIP 215", Website: "vip.215.im"},
 }
 
 /*
@@ -168,6 +170,9 @@ func generateEmailOnce(channel Channel, opts *GenerateEmailOptions) (*EmailInfo,
 
 	case ChannelAwamail:
 		return awamailGenerate()
+
+	case ChannelTemporaryEmailOrg:
+		return temporaryEmailOrgGenerate()
 
 	case ChannelMailTm:
 		return mailTmGenerate()
@@ -299,6 +304,12 @@ func getEmailsOnce(channel Channel, email string, token string) ([]Email, error)
 			return nil, fmt.Errorf("internal error: token missing for awamail channel")
 		}
 		return awamailGetEmails(token, email)
+
+	case ChannelTemporaryEmailOrg:
+		if token == "" {
+			return nil, fmt.Errorf("internal error: token missing for temporary-email-org channel")
+		}
+		return temporaryEmailOrgGetEmails(token, email)
 
 	case ChannelMailTm:
 		if token == "" {

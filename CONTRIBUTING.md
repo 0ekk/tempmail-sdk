@@ -114,7 +114,7 @@ tempmail-sdk/
 
 ## 添加新渠道
 
-当前各 SDK **对外公开的渠道共 14 个**，标识符与顺序以根目录 `README.md`「支持的渠道」表及 `types` / `ALL_CHANNELS` / `allChannels` 为准；新增或下线渠道时须**五端同步**（Go、npm、Rust、Python、C）并更新全部 README。
+当前各 SDK **对外公开的渠道**以根目录 `README.md`「支持的渠道」表及 `types` / `ALL_CHANNELS` / `allChannels` 为准（npm 含 `mffac` 等扩展渠道时数量可能多于 Go/Rust 等端）；新增或下线渠道时须**五端同步**（Go、npm、Rust、Python、C）并更新全部 README。
 
 添加新的临时邮箱服务商需要在**全部 5 个 SDK** 中实现。每个渠道需要实现两个核心函数：
 

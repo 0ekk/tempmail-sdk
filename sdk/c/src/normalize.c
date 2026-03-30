@@ -13,7 +13,7 @@ tm_email_t tm_normalize_email(const cJSON *raw, const char *recipient) {
     email.id = tm_json_get_str(raw, id_keys, 6);
 
     /* From */
-    const char *from_keys[] = {"from_address", "address_from", "from", "messageFrom", "sender"};
+    const char *from_keys[] = {"from_address", "address_from", "from_email", "from", "messageFrom", "sender"};
     email.from_addr = tm_json_get_str(raw, from_keys, 5);
 
     /* To */
@@ -60,12 +60,12 @@ tm_email_t tm_normalize_email(const cJSON *raw, const char *recipient) {
     }
 
     /* Date */
-    const char *date_keys[] = {"received_at", "created_at", "createdAt", "date", "timestamp", "e_date"};
+    const char *date_keys[] = {"received_at", "receivedAt", "created_at", "createdAt", "date", "timestamp", "e_date"};
     email.date = tm_json_get_str(raw, date_keys, 6);
 
     /* IsRead */
     email.is_read = false;
-    const char *read_keys[] = {"seen", "read", "isRead", "is_read"};
+    const char *read_keys[] = {"seen", "read", "isRead", "is_read", "is_seen"};
     for (int i = 0; i < 4; i++) {
         const cJSON *item = cJSON_GetObjectItemCaseSensitive(raw, read_keys[i]);
         if (cJSON_IsBool(item)) {

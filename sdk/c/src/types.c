@@ -20,6 +20,7 @@ static const char* channel_names[] = {
     "boomlify",
     "minmail",
     "vip-215",
+    "temporary-email-org",
 };
 
 const char* tm_channel_name(tm_channel_t channel) {

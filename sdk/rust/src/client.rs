@@ -11,7 +11,7 @@ use crate::providers;
 pub const ALL_CHANNELS: &[Channel] = &[
     Channel::Tempmail, Channel::LinshiEmail, Channel::TempmailLol,
     Channel::ChatgptOrgUk, Channel::TempMailIO,
-    Channel::Awamail, Channel::MailTm, Channel::Dropmail,
+    Channel::Awamail, Channel::TemporaryEmailOrg, Channel::MailTm, Channel::Dropmail,
     Channel::GuerrillaMail, Channel::Maildrop, Channel::SmailPw,
     Channel::Boomlify, Channel::Minmail, Channel::Vip215,
 ];
@@ -30,6 +30,7 @@ pub fn get_channel_info(channel: &Channel) -> Option<ChannelInfo> {
         Channel::ChatgptOrgUk => ChannelInfo { channel: Channel::ChatgptOrgUk, name: "ChatGPT Mail", website: "mail.chatgpt.org.uk" },
         Channel::TempMailIO => ChannelInfo { channel: Channel::TempMailIO, name: "Temp Mail IO", website: "temp-mail.io" },
         Channel::Awamail => ChannelInfo { channel: Channel::Awamail, name: "AwaMail", website: "awamail.com" },
+        Channel::TemporaryEmailOrg => ChannelInfo { channel: Channel::TemporaryEmailOrg, name: "Temporary Email", website: "temporary-email.org" },
         Channel::MailTm => ChannelInfo { channel: Channel::MailTm, name: "Mail.tm", website: "mail.tm" },
         Channel::Dropmail => ChannelInfo { channel: Channel::Dropmail, name: "DropMail", website: "dropmail.me" },
         Channel::GuerrillaMail => ChannelInfo { channel: Channel::GuerrillaMail, name: "Guerrilla Mail", website: "guerrillamail.com" },
@@ -99,6 +100,7 @@ fn generate_email_once(channel: &Channel, duration: u32, domain: Option<&str>) -
         Channel::ChatgptOrgUk => providers::chatgpt_org_uk::generate_email(),
         Channel::TempMailIO => providers::temp_mail_io::generate_email(),
         Channel::Awamail => providers::awamail::generate_email(),
+        Channel::TemporaryEmailOrg => providers::temporary_email_org::generate_email(),
         Channel::MailTm => providers::mail_tm::generate_email(),
         Channel::Dropmail => providers::dropmail::generate_email(),
         Channel::GuerrillaMail => providers::guerrillamail::generate_email(),
@@ -165,6 +167,10 @@ fn get_emails_once(channel: &Channel, email: &str, token: Option<&str>) -> Resul
         Channel::Awamail => {
             let t = token.ok_or("token is required for awamail")?;
             providers::awamail::get_emails(t, email)
+        }
+        Channel::TemporaryEmailOrg => {
+            let t = token.ok_or("token is required for temporary-email-org")?;
+            providers::temporary_email_org::get_emails(t, email)
         }
         Channel::MailTm => {
             let t = token.ok_or("token is required for mail-tm")?;

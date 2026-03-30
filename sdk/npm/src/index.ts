@@ -5,6 +5,7 @@ import * as tempmailLol from './providers/tempmail-lol';
 import * as chatgptOrgUk from './providers/chatgpt-org-uk';
 import * as tempMailIO from './providers/temp-mail-io';
 import * as awamail from './providers/awamail';
+import * as temporaryEmailOrg from './providers/temporary-email-org';
 import * as mailTm from './providers/mail-tm';
 import * as dropmail from './providers/dropmail';
 import * as guerrillamail from './providers/guerrillamail';
@@ -40,7 +41,7 @@ export {
 } from './providers/linshi-token';
 
 /** 所有支持的渠道列表，用于随机选择和遍历 */
-const allChannels: Channel[] = ['tempmail', 'linshi-email', 'mffac', 'tempmail-lol', 'chatgpt-org-uk', 'temp-mail-io', 'awamail', 'mail-tm', 'dropmail', 'guerrillamail', 'maildrop', 'smail-pw', 'boomlify', 'minmail', 'vip-215'];
+const allChannels: Channel[] = ['tempmail', 'linshi-email', 'mffac', 'tempmail-lol', 'chatgpt-org-uk', 'temp-mail-io', 'awamail', 'temporary-email-org', 'mail-tm', 'dropmail', 'guerrillamail', 'maildrop', 'smail-pw', 'boomlify', 'minmail', 'vip-215'];
 
 /**
  * 渠道信息，包含渠道标识、显示名称和对应网站
@@ -62,6 +63,7 @@ const channelInfoMap: Record<Channel, ChannelInfo> = {
   'chatgpt-org-uk': { channel: 'chatgpt-org-uk', name: 'ChatGPT Mail', website: 'mail.chatgpt.org.uk' },
   'temp-mail-io': { channel: 'temp-mail-io', name: 'Temp Mail IO', website: 'temp-mail.io' },
   'awamail': { channel: 'awamail', name: 'AwaMail', website: 'awamail.com' },
+  'temporary-email-org': { channel: 'temporary-email-org', name: 'Temporary Email', website: 'temporary-email.org' },
   'mail-tm': { channel: 'mail-tm', name: 'Mail.tm', website: 'mail.tm' },
   'dropmail': { channel: 'dropmail', name: 'DropMail', website: 'dropmail.me' },
   'guerrillamail': { channel: 'guerrillamail', name: 'Guerrilla Mail', website: 'guerrillamail.com' },
@@ -186,6 +188,8 @@ async function generateEmailOnce(channel: Channel, options: GenerateEmailOptions
       return tempMailIO.generateEmail();
     case 'awamail':
       return awamail.generateEmail();
+    case 'temporary-email-org':
+      return temporaryEmailOrg.generateEmail();
     case 'mail-tm':
       return mailTm.generateEmail();
     case 'dropmail':
@@ -287,6 +291,9 @@ async function getEmailsOnce(channel: Channel, email: string, token?: string): P
     case 'awamail':
       if (!token) throw new Error('internal error: token missing for awamail');
       return awamail.getEmails(token, email);
+    case 'temporary-email-org':
+      if (!token) throw new Error('internal error: token missing for temporary-email-org');
+      return temporaryEmailOrg.getEmails(email, token);
     case 'mail-tm':
       if (!token) throw new Error('internal error: token missing for mail-tm');
       return mailTm.getEmails(token, email);

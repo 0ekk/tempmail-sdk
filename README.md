@@ -31,6 +31,7 @@
 | `chatgpt-org-uk` | [mail.chatgpt.org.uk](https://mail.chatgpt.org.uk) | Inbox Token | 官网在 HTML 注入 `__BROWSER_AUTH`；npm 已随首页一并解析并用于创建邮箱 |
 | `temp-mail-io` | [temp-mail.io](https://temp-mail.io) | Token | |
 | `awamail` | [awamail.com](https://awamail.com) | Session Cookie | 自动提取 Cookie |
+| `temporary-email-org` | [temporary-email.org](https://www.temporary-email.org) | Session Cookie | 首次 `GET /zh/messages` 下发 `email`、`locale`、`XSRF-TOKEN`、`temporaryemail_session`；拉取邮件需带完整 Cookie 与 `X-Requested-With: XMLHttpRequest` |
 | `mail-tm` | [mail.tm](https://mail.tm) / [api.mail.tm](https://api.mail.tm) | Bearer Token | REST API，自动注册账号；npm 实现与 **Internxt** 等前端一致（如 `GET /domains?page=1`、常见浏览器请求头） |
 | `dropmail` | [dropmail.me](https://dropmail.me) | Session ID | GraphQL API |
 | `guerrillamail` | [guerrillamail.com](https://guerrillamail.com) | Session | 公开 JSON API |

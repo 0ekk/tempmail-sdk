@@ -102,9 +102,9 @@ func normalizeID(raw map[string]interface{}) string {
 	return getStr(raw, "id", "eid", "_id", "mailboxId", "messageId", "mail_id")
 }
 
-/* normalizeFrom 提取发件人地址，候选字段: from_address, address_from, from, messageFrom, sender */
+/* normalizeFrom 提取发件人地址，候选字段: from_address, address_from, from_email, from, messageFrom, sender */
 func normalizeFrom(raw map[string]interface{}) string {
-	return getStr(raw, "from_address", "address_from", "from", "messageFrom", "sender")
+	return getStr(raw, "from_address", "address_from", "from_email", "from", "messageFrom", "sender")
 }
 
 /* normalizeTo 提取收件人地址，无匹配字段时回退为 recipientEmail */
@@ -138,7 +138,7 @@ func normalizeHTML(raw map[string]interface{}) string {
  */
 func normalizeDate(raw map[string]interface{}) string {
 	/* 尝试字符串日期字段 */
-	for _, key := range []string{"received_at", "created_at", "createdAt", "date"} {
+	for _, key := range []string{"received_at", "receivedAt", "created_at", "createdAt", "date"} {
 		if v, ok := raw[key]; ok && v != nil {
 			switch val := v.(type) {
 			case string:
@@ -146,6 +146,9 @@ func normalizeDate(raw map[string]interface{}) string {
 					return t.UTC().Format(time.RFC3339)
 				}
 				if t, err := time.Parse(time.RFC3339Nano, val); err == nil {
+					return t.UTC().Format(time.RFC3339)
+				}
+				if t, err := time.ParseInLocation("2006-01-02 15:04:05", val, time.Local); err == nil {
 					return t.UTC().Format(time.RFC3339)
 				}
 				// 尝试直接返回字符串
@@ -201,6 +204,17 @@ func normalizeIsRead(raw map[string]interface{}) bool {
 	}
 	/* 数字或字符串 is_read */
 	if v, ok := raw["is_read"]; ok {
+		switch val := v.(type) {
+		case float64:
+			return int(math.Round(val)) != 0
+		case bool:
+			return val
+		case string:
+			return val == "1"
+		}
+	}
+	/* is_seen（temporary-email.org 等） */
+	if v, ok := raw["is_seen"]; ok {
 		switch val := v.(type) {
 		case float64:
 			return int(math.Round(val)) != 0

@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-临时邮箱 SDK（Python），支持 **14** 个邮箱服务提供商，所有渠道返回**统一标准化格式**（与各语言 SDK 及根目录 README 一致）。
+临时邮箱 SDK（Python），支持 **15** 个邮箱服务提供商，所有渠道返回**统一标准化格式**（与各语言 SDK 及根目录 README 一致）。
 
 ## 安装
 
@@ -24,6 +24,7 @@ pip install https://github.com/XxxXTeam/tempmail-sdk/releases/latest/download/te
 | `chatgpt-org-uk` | mail.chatgpt.org.uk | ✅ | Inbox Token 等由 SDK 封装 |
 | `temp-mail-io` | temp-mail.io | - | |
 | `awamail` | awamail.com | ✅ | Session Cookie 自动管理 |
+| `temporary-email-org` | temporary-email.org | ✅ | `GET /zh/messages` Cookie + XHR 收信 |
 | `mail-tm` | mail.tm | ✅ | 自动注册账号获取 Bearer Token |
 | `dropmail` | dropmail.me | ✅ | GraphQL API |
 | `guerrillamail` | guerrillamail.com | ✅ | 公开 JSON API |

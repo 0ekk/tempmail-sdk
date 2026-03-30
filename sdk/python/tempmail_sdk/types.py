@@ -13,6 +13,7 @@ Channel = Literal[
     "chatgpt-org-uk",
     "temp-mail-io",
     "awamail",
+    "temporary-email-org",
     "mail-tm",
     "dropmail",
     "guerrillamail",
