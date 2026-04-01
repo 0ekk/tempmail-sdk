@@ -23,8 +23,29 @@ var (
 	anonboxPRe        = regexp.MustCompile(`(?is)<p>([\s\S]*?)</p>`)
 	anonboxTagRe      = regexp.MustCompile(`<[^>]+>`)
 	anonboxExpiresRe  = regexp.MustCompile(`Your mail address is valid until:</dt>\s*<dd><p>([^<]+)</p>`)
-	anonboxMboxSplit  = regexp.MustCompile(`\r?\n(?=From )`)
 )
+
+// anonboxSplitMbox 按 Unix mbox 分隔多封邮件：下一封以单独一行的 "From " 开头。
+// 不能用 \r?\n(?=From ) 等前瞻正则：Go regexp（RE2）不支持 (?=…)，MustCompile 会在 init 阶段 panic。
+func anonboxSplitMbox(raw string) []string {
+	s := strings.ReplaceAll(raw, "\r\n", "\n")
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	const sep = "\nFrom "
+	var blocks []string
+	for {
+		idx := strings.Index(s, sep)
+		if idx < 0 {
+			blocks = append(blocks, s)
+			break
+		}
+		blocks = append(blocks, s[:idx])
+		s = s[idx+1:] // 去掉分隔用的 '\n'，保留 "From …" 作为下一封开头
+	}
+	return blocks
+}
 
 func anonboxStripTags(html string) string {
 	s := anonboxTagRe.ReplaceAllString(html, "")
@@ -292,7 +313,7 @@ func anonboxGetEmails(token, email string) ([]Email, error) {
 	if t == "" {
 		return []Email{}, nil
 	}
-	blocks := anonboxMboxSplit.Split(t, -1)
+	blocks := anonboxSplitMbox(t)
 	out := make([]Email, 0, len(blocks))
 	for _, b := range blocks {
 		b = strings.TrimSpace(b)
