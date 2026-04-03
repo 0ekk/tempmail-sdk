@@ -45,6 +45,12 @@ tm_http_response_t* tm_http_request(
 /* 释放 HTTP 响应 */
 void tm_http_response_free(tm_http_response_t *resp);
 
+/* 匿名用量上报（内部异步 POST，失败忽略） */
+void tm_telemetry_report(const char *operation, const char *channel, bool success,
+    int attempt_count, int channels_tried, const char *error_msg);
+/* 立即刷新队列（进程退出前可调用） */
+void tm_telemetry_flush_batch(void);
+
 /* ========== 字符串工具 ========== */
 
 /* 安全复制字符串（NULL 返回空串） */

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(tempmail_sdk C)
+project(tempmail_sdk VERSION 1.0.3 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -14,6 +14,7 @@ add_library(tempmail_sdk STATIC
     src/normalize.c
     src/client.c
     src/http.c
+    src/telemetry.c
     src/providers/tempmail.c
     src/providers/linshi_email.c
     src/providers/linshiyou.c
@@ -43,6 +44,8 @@ target_include_directories(tempmail_sdk PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
+
+target_compile_definitions(tempmail_sdk PRIVATE "TEMPMAIL_SDK_VERSION=\"${PROJECT_VERSION}\"")
 
 find_package(Threads REQUIRED)
 target_link_libraries(tempmail_sdk PUBLIC CURL::libcurl PRIVATE Threads::Threads)

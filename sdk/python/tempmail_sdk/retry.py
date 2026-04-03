@@ -5,13 +5,24 @@
 
 import time
 import requests
-from typing import TypeVar, Callable, Optional
+from dataclasses import dataclass
+from typing import TypeVar, Callable, Optional, Generic
 from .types import RetryConfig
 from .logger import get_logger
 
 T = TypeVar("T")
 
 DEFAULT_CONFIG = RetryConfig()
+
+
+@dataclass
+class RetryAttemptsResult(Generic[T]):
+    """with_retry_with_attempts 的返回值：ok 时 value 有效，否则 error 有效"""
+
+    ok: bool
+    attempts: int
+    value: Optional[T] = None
+    error: Optional[BaseException] = None
 
 
 def _should_retry(error: Exception) -> bool:
@@ -49,6 +60,41 @@ def _should_retry(error: Exception) -> bool:
     return False
 
 
+def with_retry_with_attempts(
+    fn: Callable[[], T], config: Optional[RetryConfig] = None
+) -> RetryAttemptsResult[T]:
+    """
+    与 with_retry 相同逻辑，返回是否成功、尝试次数；失败时不抛异常，见 error 字段。
+    """
+    cfg = config or DEFAULT_CONFIG
+    logger = get_logger()
+    last_error: Optional[Exception] = None
+
+    for attempt in range(cfg.max_retries + 1):
+        attempts = attempt + 1
+        try:
+            result = fn()
+            if attempt > 0:
+                logger.info(f"第 {attempt + 1} 次尝试成功")
+            return RetryAttemptsResult(ok=True, attempts=attempts, value=result)
+        except Exception as e:
+            last_error = e
+            error_msg = str(e)
+
+            if attempt >= cfg.max_retries or not _should_retry(e):
+                if attempt >= cfg.max_retries and cfg.max_retries > 0:
+                    logger.error(f"重试 {cfg.max_retries} 次后仍失败: {error_msg}")
+                elif not _should_retry(e):
+                    logger.debug(f"不可重试的错误: {error_msg}")
+                return RetryAttemptsResult(ok=False, attempts=attempts, error=e)
+
+            delay = min(cfg.initial_delay * (2 ** attempt), cfg.max_delay)
+            logger.warning(f"请求失败 ({error_msg})，{delay:.1f}s 后第 {attempt + 2} 次重试...")
+            time.sleep(delay)
+
+    return RetryAttemptsResult(ok=False, attempts=cfg.max_retries + 1, error=last_error)
+
+
 def with_retry(fn: Callable[[], T], config: Optional[RetryConfig] = None) -> T:
     """
     带重试的操作执行器
@@ -62,29 +108,7 @@ def with_retry(fn: Callable[[], T], config: Optional[RetryConfig] = None) -> T:
         fn:     要执行的操作函数
         config: 重试配置，None 则使用默认值
     """
-    cfg = config or DEFAULT_CONFIG
-    logger = get_logger()
-    last_error: Optional[Exception] = None
-
-    for attempt in range(cfg.max_retries + 1):
-        try:
-            result = fn()
-            if attempt > 0:
-                logger.info(f"第 {attempt + 1} 次尝试成功")
-            return result
-        except Exception as e:
-            last_error = e
-            error_msg = str(e)
-
-            if attempt >= cfg.max_retries or not _should_retry(e):
-                if attempt >= cfg.max_retries and cfg.max_retries > 0:
-                    logger.error(f"重试 {cfg.max_retries} 次后仍失败: {error_msg}")
-                elif not _should_retry(e):
-                    logger.debug(f"不可重试的错误: {error_msg}")
-                raise
-
-            delay = min(cfg.initial_delay * (2 ** attempt), cfg.max_delay)
-            logger.warning(f"请求失败 ({error_msg})，{delay:.1f}s 后第 {attempt + 2} 次重试...")
-            time.sleep(delay)
-
-    raise last_error  # type: ignore
+    r = with_retry_with_attempts(fn, config)
+    if r.ok:
+        return r.value  # type: ignore[return-value]
+    raise r.error  # type: ignore[misc]

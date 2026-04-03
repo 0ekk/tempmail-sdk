@@ -46,7 +46,7 @@ const tm_channel_info_t* tm_list_channels(int *count) {
  * 成功返回 EmailInfo 指针，失败返回 NULL
  */
 static tm_email_info_t* tm_try_generate(tm_channel_t channel, int duration, const char *domain,
-                                         const tm_retry_config_t *retry_cfg) {
+                                         const tm_retry_config_t *retry_cfg, int *out_attempts) {
     tm_retry_config_t cfg = retry_cfg ? *retry_cfg : tm_default_retry_config();
     tm_email_info_t *result = NULL;
 
@@ -74,7 +74,10 @@ static tm_email_info_t* tm_try_generate(tm_channel_t channel, int duration, cons
             case CHANNEL_MFFAC:          result = tm_provider_mffac_generate(); break;
             default: return NULL;
         }
-        if (result) return result;
+        if (result) {
+            if (out_attempts) *out_attempts = attempt + 1;
+            return result;
+        }
 
         if (attempt < cfg.max_retries) {
             int delay = cfg.initial_delay_ms * (1 << attempt);
@@ -82,6 +85,7 @@ static tm_email_info_t* tm_try_generate(tm_channel_t channel, int duration, cons
             tm_sleep_ms(delay);
         }
     }
+    if (out_attempts) *out_attempts = cfg.max_retries + 1;
     return NULL;
 }
 
@@ -137,13 +141,17 @@ tm_email_info_t* tm_generate_email(const tm_generate_options_t *options) {
     tm_channel_t *try_order = tm_build_channel_order(preferred, &count);
     if (!try_order) return NULL;
 
+    int channels_tried = 0;
     for (int i = 0; i < count; i++) {
+        channels_tried++;
         tm_channel_t ch = try_order[i];
         TM_LOG_INF("创建临时邮箱, 渠道: %s", tm_channel_name(ch));
 
-        tm_email_info_t *result = tm_try_generate(ch, duration, domain, retry_cfg);
+        int attempts = 0;
+        tm_email_info_t *result = tm_try_generate(ch, duration, domain, retry_cfg, &attempts);
         if (result) {
             TM_LOG_INF("邮箱创建成功: %s (渠道: %s)", result->email, tm_channel_name(ch));
+            tm_telemetry_report("generate_email", tm_channel_name(ch), true, attempts, channels_tried, NULL);
             free(try_order);
             return result;
         }
@@ -153,11 +161,15 @@ tm_email_info_t* tm_generate_email(const tm_generate_options_t *options) {
 
     free(try_order);
     TM_LOG_ERR("所有渠道均不可用，创建邮箱失败");
+    tm_telemetry_report("generate_email", "", false, 0, channels_tried, "all channels failed");
     return NULL;
 }
 
 tm_get_emails_result_t* tm_get_emails(const tm_email_info_t *email_info, const tm_get_emails_options_t *options) {
-    if (!email_info) return NULL;
+    if (!email_info) {
+        tm_telemetry_report("get_emails", "", false, 0, 0, "email_info is NULL");
+        return NULL;
+    }
 
     tm_get_emails_result_t *result = (tm_get_emails_result_t*)calloc(1, sizeof(tm_get_emails_result_t));
     if (!result) return NULL;
@@ -237,6 +249,7 @@ tm_get_emails_result_t* tm_get_emails(const tm_email_info_t *email_info, const t
             } else {
                 TM_LOG_DBG("暂无邮件, 渠道: %s", tm_channel_name(email_info->channel));
             }
+            tm_telemetry_report("get_emails", tm_channel_name(email_info->channel), true, attempt + 1, 0, NULL);
             return result;
         }
 
@@ -251,5 +264,7 @@ tm_get_emails_result_t* tm_get_emails(const tm_email_info_t *email_info, const t
     TM_LOG_ERR("获取邮件失败, 渠道: %s", tm_channel_name(email_info->channel));
     result->success = false;
     result->error = tm_strdup("重试耗尽后仍失败");
+    tm_telemetry_report("get_emails", tm_channel_name(email_info->channel), false, cfg.max_retries + 1, 0,
+        result->error);
     return result;
 }

@@ -9,6 +9,8 @@
  *   DROPMAIL_AUTH_TOKEN / DROPMAIL_API_TOKEN - DropMail GraphQL 的 af_ 令牌（可选；未设置时 SDK 会 /api/token/generate 获取并在将过期时用 /api/token/renew 续期）
  *   DROPMAIL_NO_AUTO_TOKEN - 设为 "1" 或 "true" 则禁止自动拉取/续期令牌
  *   DROPMAIL_RENEW_LIFETIME - 自动续期请求的 lifetime，默认 1d（与官网 renew 接口一致）
+ *   TEMPMAIL_TELEMETRY_ENABLED - true/false，默认 true；false/0/no 关闭匿名用量上报
+ *   TEMPMAIL_TELEMETRY_URL - 自定义上报端点 URL
  *
  * Node.js 环境下设置 insecure 会自动设置 NODE_TLS_REJECT_UNAUTHORIZED=0
  */
@@ -41,6 +43,10 @@ export interface SDKConfig {
    * 当设置了 proxy 但环境不支持 undici 时，可通过此选项传入支持代理的 fetch 实现
    */
   customFetch?: typeof fetch;
+  /** 为 false 时关闭匿名用量上报；未设置时默认开启 */
+  telemetryEnabled?: boolean;
+  /** 非空时覆盖默认上报 URL */
+  telemetryUrl?: string;
 }
 
 /** 从环境变量读取默认配置 */
@@ -56,6 +62,15 @@ function loadEnvConfig(): SDKConfig {
     }
     if (process.env.TEMPMAIL_INSECURE === '1' || process.env.TEMPMAIL_INSECURE?.toLowerCase() === 'true') {
       config.insecure = true;
+    }
+    const te = process.env.TEMPMAIL_TELEMETRY_ENABLED?.trim().toLowerCase();
+    if (te === 'false' || te === '0' || te === 'no') {
+      config.telemetryEnabled = false;
+    } else if (te === 'true' || te === '1' || te === 'yes') {
+      config.telemetryEnabled = true;
+    }
+    if (process.env.TEMPMAIL_TELEMETRY_URL?.trim()) {
+      config.telemetryUrl = process.env.TEMPMAIL_TELEMETRY_URL.trim();
     }
   }
   return config;

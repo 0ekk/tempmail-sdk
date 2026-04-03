@@ -112,23 +112,29 @@ func GenerateEmail(opts *GenerateEmailOptions) (*EmailInfo, error) {
 	 */
 	tryOrder := buildChannelOrder(opts.Channel)
 
+	channelsTried := 0
+	var lastErrMsg string
 	for _, ch := range tryOrder {
+		channelsTried++
 		sdkLogger.Info("创建临时邮箱", "channel", string(ch))
-		result, err := WithRetry(func() (*EmailInfo, error) {
+		result, attempts, err := withRetryAndAttempts(func() (*EmailInfo, error) {
 			return generateEmailOnce(ch, opts)
 		}, opts.Retry)
 		if err == nil && result != nil {
 			sdkLogger.Info("邮箱创建成功", "channel", string(ch), "email", result.Email)
+			reportTelemetry("generate_email", string(ch), true, attempts, channelsTried, "")
 			return result, nil
 		}
 		errMsg := "unknown error"
 		if err != nil {
 			errMsg = err.Error()
+			lastErrMsg = errMsg
 		}
 		sdkLogger.Warn("渠道不可用，尝试下一个", "channel", string(ch), "error", errMsg)
 	}
 
 	sdkLogger.Error("所有渠道均不可用，创建邮箱失败")
+	reportTelemetry("generate_email", "", false, 0, channelsTried, lastErrMsg)
 	return nil, nil
 }
 
@@ -248,12 +254,15 @@ func generateEmailOnce(channel Channel, opts *GenerateEmailOptions) (*EmailInfo,
  */
 func GetEmails(info *EmailInfo, opts *GetEmailsOptions) (*GetEmailsResult, error) {
 	if info == nil {
+		reportTelemetry("get_emails", "", false, 0, 0, "EmailInfo is required, call GenerateEmail() first")
 		return nil, fmt.Errorf("EmailInfo is required, call GenerateEmail() first")
 	}
 	if info.Channel == "" {
+		reportTelemetry("get_emails", "", false, 0, 0, "channel is required")
 		return nil, fmt.Errorf("channel is required")
 	}
 	if info.Email == "" && info.Channel != ChannelTempmailLol {
+		reportTelemetry("get_emails", string(info.Channel), false, 0, 0, "email is required")
 		return nil, fmt.Errorf("email is required")
 	}
 
@@ -263,11 +272,12 @@ func GetEmails(info *EmailInfo, opts *GetEmailsOptions) (*GetEmailsResult, error
 	}
 
 	sdkLogger.Debug("获取邮件", "channel", string(info.Channel), "email", info.Email)
-	emails, err := WithRetry(func() ([]Email, error) {
+	emails, attempts, err := withRetryAndAttempts(func() ([]Email, error) {
 		return getEmailsOnce(info.Channel, info.Email, info.token)
 	}, retry)
 
 	if err != nil {
+		reportTelemetry("get_emails", string(info.Channel), false, attempts, 0, err.Error())
 		/*
 		 * 重试耗尽后仍然失败 → 返回空结果而非 error
 		 * 这样调用方在轮询场景下不会因为一次网络波动而中断整个流程
@@ -286,6 +296,7 @@ func GetEmails(info *EmailInfo, opts *GetEmailsOptions) (*GetEmailsResult, error
 	} else {
 		sdkLogger.Debug("暂无邮件", "channel", string(info.Channel))
 	}
+	reportTelemetry("get_emails", string(info.Channel), true, attempts, 0, "")
 
 	return &GetEmailsResult{
 		Channel: info.Channel,
@@ -464,6 +475,7 @@ func (c *Client) Generate(opts *GenerateEmailOptions) (*EmailInfo, error) {
  */
 func (c *Client) GetEmails(opts *GetEmailsOptions) (*GetEmailsResult, error) {
 	if c.emailInfo == nil {
+		reportTelemetry("get_emails", "", false, 0, 0, "no email generated. Call Generate() first")
 		return nil, fmt.Errorf("no email generated. Call Generate() first")
 	}
 

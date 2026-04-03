@@ -19,7 +19,8 @@ import * as vip215 from './providers/vip-215';
 import * as anonbox from './providers/anonbox';
 import * as fakeLegal from './providers/fake-legal';
 import { Channel, EmailInfo, InternalEmailInfo, Email, GetEmailsResult, GenerateEmailOptions, GetEmailsOptions } from './types';
-import { withRetry } from './retry';
+import { withRetry, withRetryWithAttempts } from './retry';
+import { reportTelemetry } from './telemetry';
 import { logger } from './logger';
 import { setConfig, getConfig } from './config';
 
@@ -33,9 +34,11 @@ export { Channel, EmailInfo, Email, EmailAttachment, GetEmailsResult, GenerateEm
  */
 const tokenStore = new WeakMap<EmailInfo, string>();
 export { normalizeEmail } from './normalize';
-export { withRetry, fetchWithTimeout, RetryOptions } from './retry';
+export { withRetry, withRetryWithAttempts, fetchWithTimeout, RetryOptions } from './retry';
+export type { RetryWithAttemptsResult } from './retry';
 export { LogLevel, LogHandler, setLogLevel, getLogLevel, setLogger, logger } from './logger';
 export { SDKConfig, setConfig, getConfig } from './config';
+export { getSdkVersion } from './version';
 export type { SyntheticBrowserProfile } from './providers/linshi-token';
 export {
   deriveLinshiApiPathKey,
@@ -135,11 +138,16 @@ export async function generateEmail(options: GenerateEmailOptions = {}): Promise
   const allowFallback = options.channelFallback !== false;
   const tryOrder = buildChannelOrder(options.channel, allowFallback);
 
+  let channelsTried = 0;
+  let lastErr = '';
   for (const ch of tryOrder) {
+    channelsTried += 1;
     logger.info(`创建临时邮箱, 渠道: ${ch}`);
-    try {
-      const internal: InternalEmailInfo = await withRetry(() => generateEmailOnce(ch, options), options.retry);
+    const r = await withRetryWithAttempts(() => generateEmailOnce(ch, options), options.retry);
+    if (r.ok) {
+      const internal = r.value;
       logger.info(`邮箱创建成功: ${internal.email} (渠道: ${ch})`);
+      reportTelemetry('generate_email', ch, true, r.attempts, channelsTried, '');
 
       /* 将 token 存入内部存储，不暴露给用户 */
       const publicInfo: EmailInfo = {
@@ -152,12 +160,14 @@ export async function generateEmail(options: GenerateEmailOptions = {}): Promise
         tokenStore.set(publicInfo, internal.token);
       }
       return publicInfo;
-    } catch (err: any) {
-      logger.warn(`渠道 ${ch} 不可用: ${err.message || err}，尝试下一个渠道`);
     }
+    const msg = (r.error as any)?.message || String(r.error);
+    lastErr = msg;
+    logger.warn(`渠道 ${ch} 不可用: ${msg}，尝试下一个渠道`);
   }
 
   logger.error('所有渠道均不可用，创建邮箱失败');
+  reportTelemetry('generate_email', '', false, 0, channelsTried, lastErr);
   return null;
 }
 
@@ -251,6 +261,7 @@ async function generateEmailOnce(channel: Channel, options: GenerateEmailOptions
  */
 export async function getEmails(info: EmailInfo, options?: GetEmailsOptions): Promise<GetEmailsResult> {
   if (!info) {
+    reportTelemetry('get_emails', '', false, 0, 0, 'EmailInfo is required, call generateEmail() first');
     throw new Error('EmailInfo is required, call generateEmail() first');
   }
 
@@ -258,29 +269,35 @@ export async function getEmails(info: EmailInfo, options?: GetEmailsOptions): Pr
   const token = tokenStore.get(info);
 
   if (!channel) {
+    reportTelemetry('get_emails', '', false, 0, 0, 'Channel is required');
     throw new Error('Channel is required');
   }
   if (!email && channel !== 'tempmail-lol') {
+    reportTelemetry('get_emails', channel, false, 0, 0, 'Email is required');
     throw new Error('Email is required');
   }
 
   logger.debug(`获取邮件, 渠道: ${channel}, 邮箱: ${email}`);
-  try {
-    const emails = await withRetry(() => getEmailsOnce(channel, email, token), options?.retry);
+  const gr = await withRetryWithAttempts(() => getEmailsOnce(channel, email, token), options?.retry);
+  if (gr.ok) {
+    const emails = gr.value;
     if (emails.length > 0) {
       logger.info(`获取到 ${emails.length} 封邮件, 渠道: ${channel}`);
     } else {
       logger.debug(`暂无邮件, 渠道: ${channel}`);
     }
+    reportTelemetry('get_emails', channel, true, gr.attempts, 0, '');
     return { channel, email, emails, success: true };
-  } catch (err: any) {
-    /*
-     * 重试耗尽后仍然失败 → 返回空结果而非抛异常
-     * 这样调用方在轮询场景下不会因为一次网络波动而中断整个流程
-     */
-    logger.error(`获取邮件失败, 渠道: ${channel}, 错误: ${err.message || err}`);
-    return { channel, email, emails: [], success: false };
   }
+  const err = gr.error as any;
+  const errMsg = err?.message || String(err);
+  /*
+   * 重试耗尽后仍然失败 → 返回空结果而非抛异常
+   * 这样调用方在轮询场景下不会因为一次网络波动而中断整个流程
+   */
+  logger.error(`获取邮件失败, 渠道: ${channel}, 错误: ${errMsg}`);
+  reportTelemetry('get_emails', channel, false, gr.attempts, 0, errMsg);
+  return { channel, email, emails: [], success: false };
 }
 
 /**
@@ -387,6 +404,7 @@ export class TempEmailClient {
    */
   async getEmails(options?: GetEmailsOptions): Promise<GetEmailsResult> {
     if (!this.emailInfo) {
+      reportTelemetry('get_emails', '', false, 0, 0, 'No email generated. Call generate() first.');
       throw new Error('No email generated. Call generate() first.');
     }
 

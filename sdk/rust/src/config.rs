@@ -1,15 +1,13 @@
-/*!
+/*
  * SDK 全局配置
- * 包含代理、超时、SSL 等设置，作用于所有 HTTP 请求
- * 底层使用 wreq 实现浏览器 TLS/HTTP2 指纹模拟，自动随机选取浏览器配置
- *
- * 支持环境变量自动读取（优先级低于代码设置）：
  *   TEMPMAIL_PROXY    - 代理 URL
  *   TEMPMAIL_TIMEOUT  - 超时秒数
  *   TEMPMAIL_INSECURE - 设为 "1" 或 "true" 跳过 SSL 验证
  *   DROPMAIL_AUTH_TOKEN / DROPMAIL_API_TOKEN - DropMail af_ 令牌（可选；未设置则自动 generate/renew）
  *   DROPMAIL_NO_AUTO_TOKEN - 禁止自动拉取/续期
  *   DROPMAIL_RENEW_LIFETIME - renew 的 lifetime，默认 1d
+ *   TEMPMAIL_TELEMETRY_ENABLED - true/false，默认 true；false/0/no 关闭匿名用量上报
+ *   TEMPMAIL_TELEMETRY_URL - 自定义上报端点
  */
 
 use std::sync::{RwLock, OnceLock, atomic::{AtomicU64, Ordering}};
@@ -33,6 +31,17 @@ pub struct SDKConfig {
     pub dropmail_disable_auto_token: bool,
     /// /api/token/renew 的 lifetime，如 Some("1d")
     pub dropmail_renew_lifetime: Option<String>,
+    /// None = 默认开启匿名用量上报；Some(false) 关闭；Some(true) 显式开启
+    pub telemetry_enabled: Option<bool>,
+    /// 非空时覆盖默认上报 URL
+    pub telemetry_url: Option<String>,
+}
+
+impl SDKConfig {
+    /// 是否开启匿名用量上报（默认 true）
+    pub fn telemetry_is_enabled(&self) -> bool {
+        self.telemetry_enabled.unwrap_or(true)
+    }
 }
 
 impl Default for SDKConfig {
@@ -120,6 +129,16 @@ fn load_env_config() -> SDKConfig {
         .unwrap_or(false);
     let dropmail_renew_lifetime = std::env::var("DROPMAIL_RENEW_LIFETIME").ok()
         .filter(|s| !s.trim().is_empty());
+    let telemetry_enabled = std::env::var("TEMPMAIL_TELEMETRY_ENABLED").ok()
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| !s.is_empty())
+        .and_then(|s| match s.as_str() {
+            "false" | "0" | "no" => Some(false),
+            "true" | "1" | "yes" => Some(true),
+            _ => None,
+        });
+    let telemetry_url = std::env::var("TEMPMAIL_TELEMETRY_URL").ok()
+        .filter(|s| !s.trim().is_empty());
     SDKConfig {
         proxy,
         timeout_secs,
@@ -127,6 +146,8 @@ fn load_env_config() -> SDKConfig {
         dropmail_auth_token,
         dropmail_disable_auto_token,
         dropmail_renew_lifetime,
+        telemetry_enabled,
+        telemetry_url,
     }
 }
 
@@ -158,8 +179,8 @@ pub fn block_on<F: std::future::Future>(future: F) -> F::Output {
 /// 设置后自动使已缓存的 HTTP 客户端失效，下次请求时按新配置重建
 pub fn set_config(config: SDKConfig) {
     log::info!(
-        "SDK 配置已更新: proxy={:?} timeout={}s insecure={} dropmail_auto_disabled={}",
-        config.proxy, config.timeout_secs, config.insecure, config.dropmail_disable_auto_token
+        "SDK 配置已更新: proxy={:?} timeout={}s insecure={} dropmail_auto_disabled={} telemetry_enabled={}",
+        config.proxy, config.timeout_secs, config.insecure, config.dropmail_disable_auto_token, config.telemetry_is_enabled()
     );
     let mut guard = GLOBAL_CONFIG.write().unwrap();
     *guard = Some(config);

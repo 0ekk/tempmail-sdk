@@ -9,6 +9,8 @@ SDK 全局配置
   DROPMAIL_AUTH_TOKEN / DROPMAIL_API_TOKEN - DropMail af_ 令牌（可选；未设置则自动 generate/renew）
   DROPMAIL_NO_AUTO_TOKEN - 禁止自动拉取/续期
   DROPMAIL_RENEW_LIFETIME - renew 的 lifetime，默认 1d
+  TEMPMAIL_TELEMETRY_ENABLED - true/false，默认 true；false/0/no 关闭匿名用量上报
+  TEMPMAIL_TELEMETRY_URL - 自定义上报端点
 """
 
 import os
@@ -33,6 +35,10 @@ class SDKConfig:
     """为 True 时不自动 generate/renew（须配置令牌）"""
     dropmail_renew_lifetime: Optional[str] = None
     """传给 /api/token/renew 的 lifetime，默认 1d"""
+    telemetry_enabled: Optional[bool] = None
+    """None 表示默认开启匿名上报；False 关闭；True 显式开启"""
+    telemetry_url: Optional[str] = None
+    """非空时覆盖默认上报 URL"""
 
 
 def _load_env_config() -> SDKConfig:
@@ -45,6 +51,13 @@ def _load_env_config() -> SDKConfig:
     dm_tok = (os.environ.get("DROPMAIL_AUTH_TOKEN") or os.environ.get("DROPMAIL_API_TOKEN") or "").strip() or None
     dm_no = (os.environ.get("DROPMAIL_NO_AUTO_TOKEN") or "").strip().lower() in ("1", "true", "yes")
     dm_renew = (os.environ.get("DROPMAIL_RENEW_LIFETIME") or "").strip() or None
+    te_raw = (os.environ.get("TEMPMAIL_TELEMETRY_ENABLED") or "").strip().lower()
+    telemetry_enabled: Optional[bool] = None
+    if te_raw in ("false", "0", "no"):
+        telemetry_enabled = False
+    elif te_raw in ("true", "1", "yes"):
+        telemetry_enabled = True
+    tu = (os.environ.get("TEMPMAIL_TELEMETRY_URL") or "").strip() or None
     return SDKConfig(
         proxy=proxy,
         timeout=timeout,
@@ -52,6 +65,8 @@ def _load_env_config() -> SDKConfig:
         dropmail_auth_token=dm_tok,
         dropmail_disable_auto_token=dm_no,
         dropmail_renew_lifetime=dm_renew,
+        telemetry_enabled=telemetry_enabled,
+        telemetry_url=tu,
     )
 
 

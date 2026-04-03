@@ -11,17 +11,16 @@ import (
 )
 
 /*
- * SDKConfig SDK 全局配置
- * 包含代理、超时、SSL 等设置，作用于所有 HTTP 请求
- * 底层使用 tls-client 实现浏览器 TLS 指纹模拟，自动随机选取浏览器配置
- *
- * 支持环境变量自动读取（优先级低于代码设置）：
- *   TEMPMAIL_PROXY    - 代理 URL
- *   TEMPMAIL_TIMEOUT  - 超时秒数
- *   TEMPMAIL_INSECURE - 设为 "1" 或 "true" 跳过 SSL 验证
- *   DROPMAIL_AUTH_TOKEN / DROPMAIL_API_TOKEN - DropMail GraphQL 路径中的 af_ 令牌（可选；未设置则自动 generate/renew）
- *   DROPMAIL_NO_AUTO_TOKEN - 禁止自动拉取/续期
- *   DROPMAIL_RENEW_LIFETIME - renew 请求的 lifetime，默认 1d
+* SDKConfig SDK 全局配置
+
+*   TEMPMAIL_PROXY    - 代理 URL
+*   TEMPMAIL_TIMEOUT  - 超时秒数
+*   TEMPMAIL_INSECURE - 设为 "1" 或 "true" 跳过 SSL 验证
+*   DROPMAIL_AUTH_TOKEN / DROPMAIL_API_TOKEN - DropMail GraphQL 路径中的 af_ 令牌
+*   DROPMAIL_NO_AUTO_TOKEN - 禁止自动拉取/续期
+*   DROPMAIL_RENEW_LIFETIME - renew 请求的 lifetime，默认 1d
+*   TEMPMAIL_TELEMETRY_ENABLED - true/false，默认 true；设为 false/0/no 关闭匿名用量上报
+*   TEMPMAIL_TELEMETRY_URL - 自定义上报端点 URL（覆盖内置默认地址）
  */
 type SDKConfig struct {
 	/* 代理 URL，支持 http/https/socks5，如 "http://127.0.0.1:7890"，空字符串不使用代理 */
@@ -36,6 +35,12 @@ type SDKConfig struct {
 	DropmailDisableAutoToken bool
 	/* 自动续期时传给 /api/token/renew 的 lifetime，如 1d */
 	DropmailRenewLifetime string
+	/*
+	 * 匿名用量上报开关：nil 表示默认开启；指向 false 关闭，指向 true 显式开启
+	 */
+	TelemetryEnabled *bool
+	/* 非空时作为上报服务端 URL，覆盖默认端点与环境变量 TEMPMAIL_TELEMETRY_URL */
+	TelemetryEndpoint string
 }
 
 var (
@@ -81,6 +86,27 @@ func loadEnvConfig() {
 	if v := strings.TrimSpace(os.Getenv("DROPMAIL_RENEW_LIFETIME")); v != "" {
 		globalConfig.DropmailRenewLifetime = v
 	}
+	if v := strings.TrimSpace(os.Getenv("TEMPMAIL_TELEMETRY_ENABLED")); v != "" {
+		globalConfig.TelemetryEnabled = parseTelemetryEnabledEnv(v)
+	}
+	if v := strings.TrimSpace(os.Getenv("TEMPMAIL_TELEMETRY_URL")); v != "" {
+		globalConfig.TelemetryEndpoint = v
+	}
+}
+
+/* parseTelemetryEnabledEnv 解析 true/false；无法识别时返回 nil（保持默认开启） */
+func parseTelemetryEnabledEnv(raw string) *bool {
+	s := strings.TrimSpace(strings.ToLower(raw))
+	f := false
+	t := true
+	switch s {
+	case "false", "0", "no":
+		return &f
+	case "true", "1", "yes":
+		return &t
+	default:
+		return nil
+	}
 }
 
 /*
@@ -100,6 +126,7 @@ func SetConfig(config SDKConfig) {
 		"proxy", config.Proxy,
 		"timeout", config.Timeout.String(),
 		"insecure", config.Insecure,
+		"telemetry_enabled", telemetryOn(config),
 	)
 }
 

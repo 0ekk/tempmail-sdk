@@ -57,3 +57,4 @@ sdk/c/vendor/cJSON.h
 sdk/npm/.env
 .gitignore
 tag.txt
+server/

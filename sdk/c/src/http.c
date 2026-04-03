@@ -4,6 +4,8 @@
 
 #include "tempmail_internal.h"
 #include <curl/curl.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef _WIN32
 #define strncasecmp _strnicmp
@@ -13,15 +15,23 @@
 
 /* ========== 全局配置 ========== */
 
-static tm_config_t g_config = { NULL, 0, false };
+static tm_config_t g_config = { .telemetry_enabled = true };
 static char *g_proxy_copy = NULL; /* 内部复制的代理 URL */
+static char *g_telemetry_url_copy = NULL;
+
+tm_config_t tm_default_config(void) {
+    tm_config_t c;
+    memset(&c, 0, sizeof(c));
+    c.telemetry_enabled = true;
+    return c;
+}
 
 void tm_set_config(const tm_config_t *config) {
     if (g_proxy_copy) { free(g_proxy_copy); g_proxy_copy = NULL; }
+    if (g_telemetry_url_copy) { free(g_telemetry_url_copy); g_telemetry_url_copy = NULL; }
     if (!config) {
-        g_config.proxy = NULL;
-        g_config.timeout_secs = 0;
-        g_config.insecure = false;
+        memset(&g_config, 0, sizeof(g_config));
+        g_config.telemetry_enabled = true;
         return;
     }
     if (config->proxy) {
@@ -32,9 +42,16 @@ void tm_set_config(const tm_config_t *config) {
     }
     g_config.timeout_secs = config->timeout_secs;
     g_config.insecure = config->insecure;
-    TM_LOG_INF("SDK 配置已更新: proxy=%s timeout=%d insecure=%d",
+    g_config.telemetry_enabled = config->telemetry_enabled;
+    if (config->telemetry_url && config->telemetry_url[0]) {
+        g_telemetry_url_copy = strdup(config->telemetry_url);
+        g_config.telemetry_url = g_telemetry_url_copy;
+    } else {
+        g_config.telemetry_url = NULL;
+    }
+    TM_LOG_INF("SDK 配置已更新: proxy=%s timeout=%d insecure=%d telemetry_enabled=%d",
         g_config.proxy ? g_config.proxy : "(none)",
-        g_config.timeout_secs, g_config.insecure);
+        g_config.timeout_secs, g_config.insecure, (int)g_config.telemetry_enabled);
 }
 
 const tm_config_t* tm_get_config(void) {
@@ -228,6 +245,20 @@ static void load_env_config(void) {
     if (insecure && (insecure[0] == '1' || strncasecmp(insecure, "true", 4) == 0)) {
         g_config.insecure = true;
     }
+    const char *te = getenv("TEMPMAIL_TELEMETRY_ENABLED");
+    if (te && te[0]) {
+        if (strncasecmp(te, "false", 5) == 0 || strcmp(te, "0") == 0 || strncasecmp(te, "no", 3) == 0) {
+            g_config.telemetry_enabled = false;
+        } else if (strncasecmp(te, "true", 4) == 0 || strcmp(te, "1") == 0 || strncasecmp(te, "yes", 3) == 0) {
+            g_config.telemetry_enabled = true;
+        }
+    }
+    const char *tu = getenv("TEMPMAIL_TELEMETRY_URL");
+    if (tu && tu[0]) {
+        if (g_telemetry_url_copy) { free(g_telemetry_url_copy); g_telemetry_url_copy = NULL; }
+        g_telemetry_url_copy = strdup(tu);
+        if (g_telemetry_url_copy) g_config.telemetry_url = g_telemetry_url_copy;
+    }
 }
 
 void tm_init(void) {
@@ -237,6 +268,7 @@ void tm_init(void) {
 }
 
 void tm_cleanup(void) {
+    tm_telemetry_flush_batch();
     tm_vip215_module_cleanup();
     curl_global_cleanup();
 }

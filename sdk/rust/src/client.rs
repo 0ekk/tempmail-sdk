@@ -4,7 +4,8 @@
  */
 
 use crate::types::*;
-use crate::retry::with_retry;
+use crate::retry::with_retry_with_attempts;
+use crate::telemetry::report_telemetry;
 use crate::providers;
 
 /// 所有支持的渠道列表
@@ -58,24 +59,44 @@ pub fn generate_email(options: &GenerateEmailOptions) -> Option<EmailInfo> {
     let dur = options.duration.unwrap_or(30);
     let dom = options.domain.clone();
 
+    let mut channels_tried: u32 = 0;
+    let mut last_err = String::new();
     for ch in &try_order {
+        channels_tried += 1;
         log::info!("创建临时邮箱, 渠道: {}", ch);
         let c = ch.clone();
         let d = dom.clone();
-        match with_retry(|| {
+        match with_retry_with_attempts(|| {
             generate_email_once(&c, dur, d.as_deref())
         }, options.retry.as_ref()) {
-            Ok(result) => {
+            Ok((result, attempts)) => {
                 log::info!("邮箱创建成功: {} (渠道: {})", result.email, ch);
+                report_telemetry(
+                    "generate_email",
+                    &ch.to_string(),
+                    true,
+                    attempts,
+                    channels_tried,
+                    "",
+                );
                 return Some(result);
             }
-            Err(e) => {
+            Err((e, _)) => {
+                last_err = e.clone();
                 log::warn!("渠道 {} 不可用: {}，尝试下一个渠道", ch, e);
             }
         }
     }
 
     log::error!("所有渠道均不可用，创建邮箱失败");
+    report_telemetry(
+        "generate_email",
+        "",
+        false,
+        0,
+        channels_tried,
+        &last_err,
+    );
     None
 }
 
@@ -134,25 +155,58 @@ pub fn get_emails(info: &EmailInfo, options: Option<&GetEmailsOptions>) -> GetEm
     let token = info.token.clone();
     let retry = options.and_then(|o| o.retry.as_ref());
 
+    if email.is_empty() && channel != Channel::TempmailLol {
+        report_telemetry(
+            "get_emails",
+            &channel.to_string(),
+            false,
+            0,
+            0,
+            "email is required",
+        );
+        return GetEmailsResult {
+            channel,
+            email,
+            emails: vec![],
+            success: false,
+        };
+    }
+
     log::debug!("获取邮件, 渠道: {}, 邮箱: {}", channel, email);
 
     let ch = channel.clone();
     let em = email.clone();
     let tk = token.clone();
 
-    match with_retry(|| {
+    match with_retry_with_attempts(|| {
         get_emails_once(&ch, &em, tk.as_deref())
     }, retry) {
-        Ok(emails) => {
+        Ok((emails, attempts)) => {
             if !emails.is_empty() {
                 log::info!("获取到 {} 封邮件, 渠道: {}", emails.len(), channel);
             } else {
                 log::debug!("暂无邮件, 渠道: {}", channel);
             }
+            report_telemetry(
+                "get_emails",
+                &channel.to_string(),
+                true,
+                attempts,
+                0,
+                "",
+            );
             GetEmailsResult { channel, email, emails, success: true }
         }
-        Err(e) => {
+        Err((e, attempts)) => {
             log::error!("获取邮件失败, 渠道: {}, 错误: {}", channel, e);
+            report_telemetry(
+                "get_emails",
+                &channel.to_string(),
+                false,
+                attempts,
+                0,
+                &e,
+            );
             GetEmailsResult { channel, email, emails: vec![], success: false }
         }
     }

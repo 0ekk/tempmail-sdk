@@ -8,6 +8,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifndef TEMPMAIL_SDK_VERSION
+#define TEMPMAIL_SDK_VERSION "0.0.0"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -139,7 +143,14 @@ typedef struct {
     const char *proxy;     /* 代理 URL，支持 http/https/socks5，如 "http://127.0.0.1:7890"，NULL 不使用代理 */
     int timeout_secs;      /* 全局默认超时秒数，0 使用默认值 15 */
     bool insecure;         /* 跳过 SSL 证书验证（调试用） */
+    bool telemetry_enabled; /* true（默认）发送匿名用量上报；false 关闭 */
+    const char *telemetry_url; /* 非 NULL 时作为上报 URL；NULL 则使用环境变量或内置默认 */
 } tm_config_t;
+
+/**
+ * 默认 SDK 配置（含 telemetry_enabled=true，其余与零初始化一致）
+ */
+tm_config_t tm_default_config(void);
 
 /**
  * 设置 SDK 全局配置

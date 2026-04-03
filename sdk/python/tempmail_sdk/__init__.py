@@ -22,9 +22,10 @@ from .client import (
     TempEmailClient,
 )
 from .logger import set_log_level, set_logger, get_logger, LOG_SILENT, LOG_DEBUG, LOG_INFO, LOG_WARNING, LOG_ERROR
-from .retry import with_retry
+from .retry import with_retry, with_retry_with_attempts, RetryAttemptsResult
 from .normalize import normalize_email
 from .config import SDKConfig, set_config, get_config
+from .telemetry import get_sdk_version
 
 __all__ = [
     "Channel",
@@ -50,8 +51,11 @@ __all__ = [
     "LOG_WARNING",
     "LOG_ERROR",
     "with_retry",
+    "with_retry_with_attempts",
+    "RetryAttemptsResult",
     "normalize_email",
     "SDKConfig",
     "set_config",
     "get_config",
+    "get_sdk_version",
 ]

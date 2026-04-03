@@ -89,17 +89,28 @@ function sleep(ms: number): Promise<void> {
  * @param fn 要执行的异步操作
  * @param options 重试配置
  */
-export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions): Promise<T> {
+export type RetryWithAttemptsResult<T> =
+  | { ok: true; value: T; attempts: number }
+  | { ok: false; error: unknown; attempts: number };
+
+/**
+ * 与 withRetry 相同，额外返回尝试次数（成功或最终失败时均有效）
+ */
+export async function withRetryWithAttempts<T>(
+  fn: () => Promise<T>,
+  options?: RetryOptions,
+): Promise<RetryWithAttemptsResult<T>> {
   const opts = { ...DEFAULT_RETRY_OPTIONS, ...options };
   let lastError: any;
 
   for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
+    const attempts = attempt + 1;
     try {
       const result = await fn();
       if (attempt > 0) {
         logger.info(`第 ${attempt + 1} 次尝试成功`);
       }
-      return result;
+      return { ok: true, value: result, attempts };
     } catch (error: any) {
       lastError = error;
       const errorMsg = error.message || String(error);
@@ -111,7 +122,7 @@ export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions)
         } else if (!opts.shouldRetry(error)) {
           logger.debug(`不可重试的错误: ${errorMsg}`);
         }
-        throw error;
+        return { ok: false, error, attempts };
       }
 
       /* 指数退避等待 */
@@ -121,7 +132,13 @@ export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions)
     }
   }
 
-  throw lastError;
+  return { ok: false, error: lastError, attempts: opts.maxRetries + 1 };
+}
+
+export async function withRetry<T>(fn: () => Promise<T>, options?: RetryOptions): Promise<T> {
+  const r = await withRetryWithAttempts(fn, options);
+  if (r.ok) return r.value;
+  throw r.error;
 }
 
 /**

@@ -10,7 +10,8 @@ from .types import (
     GenerateEmailOptions, GetEmailsOptions,
     ChannelInfo,
 )
-from .retry import with_retry
+from .retry import with_retry, with_retry_with_attempts
+from .telemetry import report_telemetry
 from .logger import get_logger
 from .providers import (
     tempmail, linshi_email, linshiyou, mffac, tempmail_lol, chatgpt_org_uk,
@@ -84,19 +85,27 @@ def generate_email(options: Optional[GenerateEmailOptions] = None) -> Optional[E
     # 构建尝试顺序：指定渠道优先尝试，失败后随机尝试其他渠道；未指定则打乱全部逐个尝试
     try_order = _build_channel_order(options.channel)
 
+    channels_tried = 0
+    last_err = ""
     for ch in try_order:
+        channels_tried += 1
         logger.info(f"创建临时邮箱, 渠道: {ch}")
-        try:
-            result = with_retry(
-                lambda c=ch: _generate_email_once(c, options),
-                options.retry,
-            )
+        r = with_retry_with_attempts(
+            lambda c=ch: _generate_email_once(c, options),
+            options.retry,
+        )
+        if r.ok:
+            result = r.value
+            assert result is not None
             logger.info(f"邮箱创建成功: {result.email} (渠道: {ch})")
+            report_telemetry("generate_email", ch, True, r.attempts, channels_tried, "")
             return result
-        except Exception as e:
-            logger.warning(f"渠道 {ch} 不可用: {e}，尝试下一个渠道")
+        err = r.error
+        last_err = str(err) if err else "unknown"
+        logger.warning(f"渠道 {ch} 不可用: {last_err}，尝试下一个渠道")
 
     logger.error("所有渠道均不可用，创建邮箱失败")
+    report_telemetry("generate_email", "", False, 0, channels_tried, last_err)
     return None
 
 
@@ -177,6 +186,7 @@ def get_emails(info: EmailInfo, options: Optional[GetEmailsOptions] = None) -> G
             print(f"收到 {len(result.emails)} 封邮件")
     """
     if info is None:
+        report_telemetry("get_emails", "", False, 0, 0, "EmailInfo is required, call generate_email() first")
         raise ValueError("EmailInfo is required, call generate_email() first")
 
     channel = info.channel
@@ -186,26 +196,33 @@ def get_emails(info: EmailInfo, options: Optional[GetEmailsOptions] = None) -> G
     logger = get_logger()
 
     if not channel:
+        report_telemetry("get_emails", "", False, 0, 0, "channel is required")
         raise ValueError("channel is required")
     if not email and channel != "tempmail-lol":
+        report_telemetry("get_emails", channel, False, 0, 0, "email is required")
         raise ValueError("email is required")
 
     logger.debug(f"获取邮件, 渠道: {channel}, 邮箱: {email}")
 
-    try:
-        emails = with_retry(
-            lambda: _get_emails_once(channel, email, token),
-            retry,
-        )
+    r = with_retry_with_attempts(
+        lambda: _get_emails_once(channel, email, token),
+        retry,
+    )
+    if r.ok:
+        emails = r.value
+        assert emails is not None
         if emails:
             logger.info(f"获取到 {len(emails)} 封邮件, 渠道: {channel}")
         else:
             logger.debug(f"暂无邮件, 渠道: {channel}")
-
+        report_telemetry("get_emails", channel, True, r.attempts, 0, "")
         return GetEmailsResult(channel=channel, email=email, emails=emails, success=True)
-    except Exception as e:
-        logger.error(f"获取邮件失败, 渠道: {channel}, 错误: {e}")
-        return GetEmailsResult(channel=channel, email=email, emails=[], success=False)
+
+    err = r.error
+    err_s = str(err) if err else "unknown"
+    logger.error(f"获取邮件失败, 渠道: {channel}, 错误: {err_s}")
+    report_telemetry("get_emails", channel, False, r.attempts, 0, err_s)
+    return GetEmailsResult(channel=channel, email=email, emails=[], success=False)
 
 
 def _get_emails_once(channel: str, email: str, token: Optional[str]) -> List[Email]:
@@ -308,6 +325,7 @@ class TempEmailClient:
     def get_emails(self, options: Optional[GetEmailsOptions] = None) -> GetEmailsResult:
         """获取当前邮箱的邮件列表，必须先调用 generate()"""
         if self._email_info is None:
+            report_telemetry("get_emails", "", False, 0, 0, "No email generated. Call generate() first")
             raise RuntimeError("No email generated. Call generate() first")
 
         return get_emails(self._email_info, options)

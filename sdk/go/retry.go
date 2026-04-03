@@ -121,18 +121,22 @@ func shouldRetry(err error) bool {
  * - fn:   要执行的操作函数
  * - opts: 重试配置，nil 则使用默认值
  */
-func WithRetry[T any](fn func() (T, error), opts *RetryOptions) (T, error) {
+/*
+ * withRetryAndAttempts 与 WithRetry 相同，但额外返回总尝试次数（含首次，至少为 1）
+ */
+func withRetryAndAttempts[T any](fn func() (T, error), opts *RetryOptions) (T, int, error) {
 	merged := mergeRetryOptions(opts)
 	var lastErr error
 	var zero T
 
 	for attempt := 0; attempt <= merged.MaxRetries; attempt++ {
 		result, err := fn()
+		attempts := attempt + 1
 		if err == nil {
 			if attempt > 0 {
-				sdkLogger.Info("重试成功", "attempt", attempt+1)
+				sdkLogger.Info("重试成功", "attempt", attempts)
 			}
-			return result, nil
+			return result, attempts, nil
 		}
 
 		lastErr = err
@@ -145,7 +149,7 @@ func WithRetry[T any](fn func() (T, error), opts *RetryOptions) (T, error) {
 			} else if !shouldRetry(err) {
 				sdkLogger.Debug("不可重试的错误", "error", errorMsg)
 			}
-			return zero, err
+			return zero, attempts, err
 		}
 
 		/* 指数退避等待 */
@@ -157,7 +161,12 @@ func WithRetry[T any](fn func() (T, error), opts *RetryOptions) (T, error) {
 		time.Sleep(delay)
 	}
 
-	return zero, lastErr
+	return zero, merged.MaxRetries + 1, lastErr
+}
+
+func WithRetry[T any](fn func() (T, error), opts *RetryOptions) (T, error) {
+	v, _, err := withRetryAndAttempts(fn, opts)
+	return v, err
 }
 
 /*
