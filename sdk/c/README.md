@@ -122,13 +122,15 @@ config2.insecure = 1;
 tm_set_config(&config2);
 ```
 
-**配置项：**
+**配置项（`tm_config_t`）：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `proxy` | `const char*` | 代理 URL（http/https/socks5） |
 | `timeout_secs` | `int` | 全局超时秒数，默认 15 |
 | `insecure` | `bool` | 跳过 SSL 验证（调试用） |
+| `telemetry_enabled` | `bool` | 默认 `true`：发送匿名用量上报；`false` 关闭 |
+| `telemetry_url` | `const char*` | 非 NULL 时作为上报 URL；NULL 则用环境变量或内置默认 |
 
 **环境变量（无需修改代码，`tm_init()` 时自动读取）：**
 
@@ -136,7 +138,17 @@ tm_set_config(&config2);
 export TEMPMAIL_PROXY="http://127.0.0.1:7890"
 export TEMPMAIL_INSECURE=1
 export TEMPMAIL_TIMEOUT=30
+export TEMPMAIL_TELEMETRY_ENABLED=false
+export TEMPMAIL_TELEMETRY_URL="https://example.com/v1/event"
 ```
+
+## 匿名遥测
+
+默认 **开启**：事件在 SDK 内排队后批量上报（内置默认 URL 见 `telemetry.c`）。`tm_set_config` 可设置 `telemetry_enabled` / `telemetry_url`；`tm_cleanup()` 时会尽量刷完队列。关闭：环境变量 `TEMPMAIL_TELEMETRY_ENABLED=false`（或 `0` / `no`）或配置 `telemetry_enabled = false`。
+
+## HTTP 重试
+
+`tm_generate_options_t` 与 `tm_get_emails_options_t` 均可设置 `retry` 指向 `tm_retry_config_t`（如 `max_retries`、超时等），`NULL` 使用默认；详见 `tempmail_sdk.h`。
 
 ## 内存管理
 

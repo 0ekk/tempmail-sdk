@@ -18,6 +18,8 @@
 - 📝 完整的类型定义（TypeScript / Rust / Go）
 - 🚀 简单易用的 API，开箱即用
 - 🔌 Token/Session 自动管理（使用 Client 类）
+- 🔁 创建邮箱 / 拉取邮件支持可配置 **HTTP 重试**（退避与最大次数等，各语言字段见子目录 README）
+- 📊 **匿名遥测**默认开启：批量上报操作成败与重试元数据（不含邮件内容，错误串中的邮箱会脱敏），可用环境变量或全局配置关闭或改端点
 - 🏗️ 多平台预编译二进制（Go / Rust / C）
 - 📡 所有包均可通过 GitHub 托管安装，无需第三方注册表
 
@@ -257,6 +259,25 @@ func main() {
 }
 ```
 
+## 匿名遥测与 HTTP 重试
+
+### 匿名遥测（可关闭）
+
+五语言 SDK **默认开启**匿名用量统计：在进程内将事件入队，定时或满批后合并为一次 **`POST`**，JSON 体为 **`schema_version: 2`**，包含 `sdk_language`、`sdk_version`、`os`、`arch` 以及 `events[]`（如 `operation`、`channel`、`success`、`attempt_count`、`channels_tried`、脱敏后的 `error`、`ts_ms` 等）。**不包含**邮件正文或 Token；错误文案里形似邮箱的片段会替换为 `[redacted]`。
+
+| 环境变量 | 说明 |
+|---------|------|
+| `TEMPMAIL_TELEMETRY_ENABLED` | `true` / `1` / `yes` 开启（默认），`false` / `0` / `no` 关闭 |
+| `TEMPMAIL_TELEMETRY_URL` | 覆盖默认上报 URL（内置默认一般为 `https://sdk-1.openel.top/v1/event`，以各 SDK 源码为准） |
+
+也可在代码里通过全局配置关闭或指定 URL：**Go** `SDKConfig.TelemetryEnabled` / `TelemetryEndpoint`；**npm** `telemetryEnabled` / `telemetryUrl`；**Rust** `telemetry_enabled` / `telemetry_url`；**Python** `SDKConfig.telemetry_enabled` / `telemetry_url`；**C** `tm_config_t.telemetry_enabled` / `telemetry_url`。
+
+本仓库下的 **`telemetry-server/`** 为可选的收集服务示例（`POST /v1/event` 写入 SQLite 等）；**SDK 上报不需要令牌**，与自建服务的管理端鉴权无关。
+
+### HTTP 重试
+
+各语言在「生成邮箱」「拉取邮件」上均支持 **Retry**（如最大次数、超时、退避），具体字段名见对应 SDK 的 `README.md` 与类型定义（如 npm 的 `retry`、`Go` 的 `RetryOptions` 等）。
+
 ## 📖 API 文档
 
 详细 API 文档请参阅各 SDK 目录：
@@ -303,6 +324,7 @@ tempmail-sdk/
 │       ├── src/                # 源码
 │       │   └── providers/      # 各渠道实现
 │       └── CMakeLists.txt      # 构建配置
+├── telemetry-server/           # 可选：遥测收集服务（Gin + SQLite 等，见目录内实现）
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml              # CI 工作流

@@ -96,7 +96,7 @@ set_config(proxy="socks5://127.0.0.1:1080", timeout=30, insecure=True)
 set_config(headers={"X-Custom": "value"})
 ```
 
-**配置项：**
+**配置项（`SDKConfig` / `set_config`）：**
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
@@ -104,6 +104,9 @@ set_config(headers={"X-Custom": "value"})
 | `timeout` | `int` | 全局超时秒数，默认 15 |
 | `insecure` | `bool` | 跳过 SSL 验证（调试用） |
 | `headers` | `dict` | 自定义请求头 |
+| `dropmail_auth_token` 等 | 见 `config.py` | DropMail `DROPMAIL_*` 环境变量亦可 |
+| `telemetry_enabled` | `Optional[bool]` | `None` 默认开启；`False` 关闭匿名遥测 |
+| `telemetry_url` | `Optional[str]` | 覆盖默认上报 URL |
 
 **环境变量（无需修改代码）：**
 
@@ -111,7 +114,15 @@ set_config(headers={"X-Custom": "value"})
 export TEMPMAIL_PROXY="http://127.0.0.1:7890"
 export TEMPMAIL_INSECURE=1
 export TEMPMAIL_TIMEOUT=30
+export DROPMAIL_AUTH_TOKEN="af_..."
+export DROPMAIL_NO_AUTO_TOKEN=1
+export TEMPMAIL_TELEMETRY_ENABLED=false
+export TEMPMAIL_TELEMETRY_URL="https://example.com/v1/event"
 ```
+
+## 匿名遥测
+
+默认 **开启**：批量 `POST` 匿名事件（`schema_version: 2`），内置默认 URL 见 `telemetry.py`。关闭：`TEMPMAIL_TELEMETRY_ENABLED=false`（或 `0` / `no`）或 `set_config(telemetry_enabled=False)`；改 URL：`TEMPMAIL_TELEMETRY_URL` 或 `telemetry_url`。
 
 ## 重试配置
 
@@ -123,3 +134,5 @@ info = generate_email(GenerateEmailOptions(
     retry=RetryConfig(max_retries=3, initial_delay=2.0),
 ))
 ```
+
+拉取邮件同样可传 `GetEmailsOptions(retry=RetryConfig(...))`。

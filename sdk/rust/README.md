@@ -104,13 +104,18 @@ set_config(SDKConfig {
 });
 ```
 
-**配置项：**
+**配置项（`SDKConfig`）：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `proxy` | `Option<String>` | 代理 URL（http/https/socks5） |
 | `timeout_secs` | `u64` | 全局超时秒数，默认 15 |
 | `insecure` | `bool` | 跳过 SSL 验证（调试用） |
+| `dropmail_auth_token` | `Option<String>` | DropMail `af_` 令牌；未设则自动申请 |
+| `dropmail_disable_auto_token` | `bool` | 为 true 时不自动 generate/renew |
+| `dropmail_renew_lifetime` | `Option<String>` | renew 的 lifetime，如 `1d` |
+| `telemetry_enabled` | `Option<bool>` | `None` 默认开启匿名遥测；`Some(false)` 关闭 |
+| `telemetry_url` | `Option<String>` | 非空时覆盖默认上报 URL |
 
 **环境变量（无需修改代码）：**
 
@@ -118,7 +123,20 @@ set_config(SDKConfig {
 export TEMPMAIL_PROXY="http://127.0.0.1:7890"
 export TEMPMAIL_INSECURE=1
 export TEMPMAIL_TIMEOUT=30
+export DROPMAIL_AUTH_TOKEN="af_..."
+export DROPMAIL_NO_AUTO_TOKEN=1
+export DROPMAIL_RENEW_LIFETIME=1d
+export TEMPMAIL_TELEMETRY_ENABLED=false
+export TEMPMAIL_TELEMETRY_URL="https://example.com/v1/event"
 ```
+
+## 匿名遥测
+
+默认 **开启**：批量上报匿名事件（`schema_version: 2`），默认 URL 见 `src/telemetry.rs`。关闭：`TEMPMAIL_TELEMETRY_ENABLED=false` 或 `set_config(SDKConfig { telemetry_enabled: Some(false), .. })`；改 URL：`TEMPMAIL_TELEMETRY_URL` 或 `telemetry_url`。
+
+## HTTP 重试
+
+`GenerateEmailOptions` 与 `GetEmailsOptions` 均支持 `retry: Option<RetryConfig>`（最大次数、初始延迟等），与 npm / Go / Python 行为一致。
 
 ## 日志
 

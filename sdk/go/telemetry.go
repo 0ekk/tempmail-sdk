@@ -11,7 +11,7 @@ import (
  * 匿名用量上报
  *
  * 环境变量（进程启动时读入全局默认，可被 SetConfig 覆盖）：
- *   TEMPMAIL_TELEMETRY_ENABLED - true/1/yes 开启（默认），false/0/no 关闭
+ *   TEMPMAIL_TELEMETRY_ENABLED - 未设置则默认开启；false/0/no 关闭，true/1/yes 显式开启
  *   TEMPMAIL_TELEMETRY_URL      - 覆盖上报端点 URL
  *
  * 代码：SDKConfig.TelemetryEnabled 为 nil 表示沿用默认（开启）；指向 false 则关闭

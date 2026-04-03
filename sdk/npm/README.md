@@ -260,6 +260,8 @@ setConfig({
 | `timeout` | `number?` | 全局超时毫秒数，默认 15000 |
 | `insecure` | `boolean?` | 跳过 SSL 验证（调试用） |
 | `customFetch` | `typeof fetch?` | 自定义 fetch 函数，用于代理等高级场景 |
+| `telemetryEnabled` | `boolean?` | 未设则默认开启匿名遥测；`false` 关闭 |
+| `telemetryUrl` | `string?` | 覆盖默认上报 URL |
 
 **环境变量（无需修改代码）：**
 
@@ -267,11 +269,17 @@ setConfig({
 export TEMPMAIL_PROXY="http://127.0.0.1:7890"
 export TEMPMAIL_INSECURE=1
 export TEMPMAIL_TIMEOUT=30000
+export TEMPMAIL_TELEMETRY_ENABLED=false
+export TEMPMAIL_TELEMETRY_URL="https://example.com/v1/event"
 ```
 
 > **提示：** Node.js 原生 fetch 不支持代理，推荐通过 `customFetch` + `undici` 的 `ProxyAgent` 实现代理支持。
 
 DropMail 自动令牌等更多配置见源码 `src/config.ts` 注释（`DROPMAIL_*` 环境变量）。
+
+## 匿名遥测
+
+默认 **开启**：在进程内排队，定时或满批向默认端点 `POST` 匿名事件（`schema_version: 2`，含 SDK 语言/版本、OS、操作类型、渠道、成败与重试次数等；错误串脱敏）。关闭：`TEMPMAIL_TELEMETRY_ENABLED=false`（或 `0` / `no`）或 `setConfig({ telemetryEnabled: false })`；改 URL：`TEMPMAIL_TELEMETRY_URL` 或 `telemetryUrl`（内置默认见 `src/telemetry.ts`）。
 
 ## 示例脚本（本仓库）
 

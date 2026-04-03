@@ -181,13 +181,18 @@ tempemail.SetConfig(tempemail.SDKConfig{
 })
 ```
 
-**配置项：**
+**配置项（`SDKConfig`）：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `Proxy` | `string` | 代理 URL（http/https/socks5） |
 | `Timeout` | `time.Duration` | 全局超时，默认 15s |
 | `Insecure` | `bool` | 跳过 SSL 验证（调试用） |
+| `DropmailAuthToken` | `string` | DropMail GraphQL 路径中的 `af_` 令牌；空则自动申请 |
+| `DropmailDisableAutoToken` | `bool` | 为 true 时不自动拉取/续期令牌 |
+| `DropmailRenewLifetime` | `string` | 续期请求的 lifetime，如 `1d` |
+| `TelemetryEnabled` | `*bool` | `nil` 默认开启匿名遥测；指向 `false` 关闭 |
+| `TelemetryEndpoint` | `string` | 非空时作为上报 URL，覆盖环境变量与内置默认 |
 
 **环境变量（无需修改代码）：**
 
@@ -195,7 +200,16 @@ tempemail.SetConfig(tempemail.SDKConfig{
 export TEMPMAIL_PROXY="http://127.0.0.1:7890"
 export TEMPMAIL_INSECURE=1
 export TEMPMAIL_TIMEOUT=30
+export DROPMAIL_AUTH_TOKEN="af_..."   # 或 DROPMAIL_API_TOKEN
+export DROPMAIL_NO_AUTO_TOKEN=1
+export DROPMAIL_RENEW_LIFETIME=1d
+export TEMPMAIL_TELEMETRY_ENABLED=false
+export TEMPMAIL_TELEMETRY_URL="https://example.com/v1/event"
 ```
+
+## 匿名遥测
+
+默认 **开启**：将 `generate_email` / `get_emails` 等操作的成败与重试信息**批量** `POST` 到上报端点（`schema_version: 2`），内置默认 URL 见 `telemetry.go`（一般为 `https://sdk-1.openel.top/v1/event`）。错误串中的邮箱形态会脱敏。关闭：环境变量 `TEMPMAIL_TELEMETRY_ENABLED=false`（或 `0` / `no`），或代码中 `off := false; SetConfig(SDKConfig{TelemetryEnabled: &off})`；改 URL：`TEMPMAIL_TELEMETRY_URL` 或 `TelemetryEndpoint`。
 
 ## API 参考
 
@@ -222,6 +236,7 @@ export TEMPMAIL_TIMEOUT=30
 | `Channel` | `Channel` | 指定渠道（可选，不指定则随机） |
 | `Duration` | `int` | 有效期分钟数（仅 `tempmail` 渠道） |
 | `Domain` | `*string` | 指定域名（`tempmail-lol`、`maildrop`、`fake-legal`） |
+| `Retry` | `*RetryOptions` | 创建邮箱时的 HTTP 重试，nil 使用默认 |
 
 **返回值:** `*EmailInfo`
 
