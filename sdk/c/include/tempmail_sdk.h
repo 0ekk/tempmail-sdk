@@ -45,6 +45,7 @@ typedef enum {
     CHANNEL_10MAIL_WANGTZ,
     CHANNEL_MOAKT,
     CHANNEL_10MINUTE_ONE,
+    CHANNEL_TEMPMAILG,
     CHANNEL_COUNT,       /* 渠道总数 */
     CHANNEL_RANDOM = -1, /* 随机选择 */
 } tm_channel_t;
@@ -184,7 +185,7 @@ void tm_cleanup(void);
 
 /**
  * 获取所有支持的渠道列表
- * 返回 CHANNEL_COUNT 个渠道信息
+ * 返回全部渠道信息（*count 与 CHANNEL_COUNT 一致，顺序与 Go SDK allChannels 相同）
  */
 const tm_channel_info_t* tm_list_channels(int *count);
 

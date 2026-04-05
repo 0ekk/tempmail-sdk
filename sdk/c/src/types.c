@@ -32,6 +32,7 @@ static const char* channel_names[] = {
     "10mail-wangtz",
     "moakt",
     "10minute-one",
+    "tempmailg",
 };
 
 const char* tm_channel_name(tm_channel_t channel) {

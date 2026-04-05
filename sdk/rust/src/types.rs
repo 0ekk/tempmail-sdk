@@ -13,6 +13,8 @@ pub enum Channel {
     TempmailCn,
     #[serde(rename = "tmpmails")]
     Tmpmails,
+    #[serde(rename = "tempmailg")]
+    Tempmailg,
     #[serde(rename = "ta-easy")]
     TaEasy,
     #[serde(rename = "10mail-wangtz")]
@@ -67,6 +69,7 @@ impl std::fmt::Display for Channel {
             Channel::Tempmail => write!(f, "tempmail"),
             Channel::TempmailCn => write!(f, "tempmail-cn"),
             Channel::Tmpmails => write!(f, "tmpmails"),
+            Channel::Tempmailg => write!(f, "tempmailg"),
             Channel::TaEasy => write!(f, "ta-easy"),
             Channel::TenmailWangtz => write!(f, "10mail-wangtz"),
             Channel::TenminuteOne => write!(f, "10minute-one"),

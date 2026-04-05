@@ -1,6 +1,7 @@
 import * as tempmail from './providers/tempmail';
 import * as tempmailCn from './providers/tempmail-cn';
 import * as tmpmails from './providers/tmpmails';
+import * as tempmailg from './providers/tempmailg';
 import * as taEasy from './providers/ta-easy';
 import * as tenmailWangtz from './providers/10mail-wangtz';
 import * as linshiEmail from './providers/linshi-email';
@@ -54,7 +55,7 @@ export {
 } from './providers/linshi-token';
 
 /** 所有支持的渠道列表，用于随机选择和遍历 */
-const allChannels: Channel[] = ['tempmail', 'tempmail-cn', 'tmpmails', 'ta-easy', '10mail-wangtz', '10minute-one', 'linshi-email', 'linshiyou', 'mffac', 'tempmail-lol', 'chatgpt-org-uk', 'temp-mail-io', 'awamail', 'temporary-email-org', 'mail-tm', 'mail-cx', 'dropmail', 'guerrillamail', 'maildrop', 'smail-pw', 'boomlify', 'minmail', 'vip-215', 'anonbox', 'fake-legal', 'moakt'];
+const allChannels: Channel[] = ['tempmail', 'tempmail-cn', 'tmpmails', 'tempmailg', 'ta-easy', '10mail-wangtz', '10minute-one', 'linshi-email', 'linshiyou', 'mffac', 'tempmail-lol', 'chatgpt-org-uk', 'temp-mail-io', 'awamail', 'temporary-email-org', 'mail-tm', 'mail-cx', 'dropmail', 'guerrillamail', 'maildrop', 'smail-pw', 'boomlify', 'minmail', 'vip-215', 'anonbox', 'fake-legal', 'moakt'];
 
 /**
  * 渠道信息，包含渠道标识、显示名称和对应网站
@@ -73,6 +74,7 @@ const channelInfoMap: Record<Channel, ChannelInfo> = {
   'tempmail': { channel: 'tempmail', name: 'TempMail', website: 'tempmail.ing' },
   'tempmail-cn': { channel: 'tempmail-cn', name: 'TempMail CN', website: 'tempmail.cn' },
   'tmpmails': { channel: 'tmpmails', name: 'TmpMails', website: 'tmpmails.com' },
+  'tempmailg': { channel: 'tempmailg', name: 'TempMailG', website: 'tempmailg.com' },
   'ta-easy': { channel: 'ta-easy', name: 'TA Easy', website: 'ta-easy.com' },
   '10mail-wangtz': { channel: '10mail-wangtz', name: '10mail Wangtz', website: '10mail.wangtz.cn' },
   '10minute-one': { channel: '10minute-one', name: '10 Minute Email', website: '10minutemail.one' },
@@ -212,6 +214,8 @@ async function generateEmailOnce(channel: Channel, options: GenerateEmailOptions
       return tempmailCn.generateEmail(options.domain ?? null);
     case 'tmpmails':
       return tmpmails.generateEmail(options.domain ?? null);
+    case 'tempmailg':
+      return tempmailg.generateEmail(options.domain ?? null);
     case 'ta-easy':
       return taEasy.generateEmail();
     case '10mail-wangtz':
@@ -337,6 +341,9 @@ async function getEmailsOnce(channel: Channel, email: string, token?: string): P
     case 'tmpmails':
       if (!token) throw new Error('internal error: token missing for tmpmails');
       return tmpmails.getEmails(email, token);
+    case 'tempmailg':
+      if (!token) throw new Error('internal error: token missing for tempmailg');
+      return tempmailg.getEmails(email, token);
     case 'ta-easy':
       if (!token) throw new Error('internal error: token missing for ta-easy');
       return taEasy.getEmails(email, token);

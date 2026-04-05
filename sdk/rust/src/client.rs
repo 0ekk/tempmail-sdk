@@ -10,7 +10,7 @@ use crate::providers;
 
 /// 所有支持的渠道列表
 pub const ALL_CHANNELS: &[Channel] = &[
-    Channel::Tempmail, Channel::TempmailCn, Channel::Tmpmails, Channel::TaEasy, Channel::TenmailWangtz, Channel::TenminuteOne, Channel::LinshiEmail, Channel::Linshiyou, Channel::Mffac, Channel::TempmailLol,
+    Channel::Tempmail, Channel::TempmailCn, Channel::Tmpmails, Channel::Tempmailg, Channel::TaEasy, Channel::TenmailWangtz, Channel::TenminuteOne, Channel::LinshiEmail, Channel::Linshiyou, Channel::Mffac, Channel::TempmailLol,
     Channel::ChatgptOrgUk, Channel::TempMailIO,
     Channel::Awamail, Channel::TemporaryEmailOrg, Channel::MailTm, Channel::MailCx, Channel::Dropmail,
     Channel::GuerrillaMail, Channel::Maildrop, Channel::SmailPw,
@@ -28,6 +28,7 @@ pub fn get_channel_info(channel: &Channel) -> Option<ChannelInfo> {
         Channel::Tempmail => ChannelInfo { channel: Channel::Tempmail, name: "TempMail", website: "tempmail.ing" },
         Channel::TempmailCn => ChannelInfo { channel: Channel::TempmailCn, name: "TempMail CN", website: "tempmail.cn" },
         Channel::Tmpmails => ChannelInfo { channel: Channel::Tmpmails, name: "TmpMails", website: "tmpmails.com" },
+        Channel::Tempmailg => ChannelInfo { channel: Channel::Tempmailg, name: "TempMailG", website: "tempmailg.com" },
         Channel::TaEasy => ChannelInfo { channel: Channel::TaEasy, name: "TA Easy", website: "ta-easy.com" },
         Channel::TenmailWangtz => ChannelInfo { channel: Channel::TenmailWangtz, name: "10mail Wangtz", website: "10mail.wangtz.cn" },
         Channel::TenminuteOne => ChannelInfo { channel: Channel::TenminuteOne, name: "10 Minute Email", website: "10minutemail.one" },
@@ -129,6 +130,7 @@ fn generate_email_once(channel: &Channel, duration: u32, domain: Option<&str>) -
         Channel::Tempmail => providers::tempmail::generate_email(duration),
         Channel::TempmailCn => providers::tempmail_cn::generate_email(domain),
         Channel::Tmpmails => providers::tmpmails::generate_email(domain),
+        Channel::Tempmailg => providers::tempmailg::generate_email(domain),
         Channel::TaEasy => providers::ta_easy::generate_email(),
         Channel::TenmailWangtz => providers::tenmail_wangtz::generate_email(domain),
         Channel::TenminuteOne => providers::tenminute_one::generate_email(domain),
@@ -231,6 +233,10 @@ fn get_emails_once(channel: &Channel, email: &str, token: Option<&str>) -> Resul
         Channel::Tmpmails => {
             let t = token.ok_or("token is required for tmpmails")?;
             providers::tmpmails::get_emails(t, email)
+        },
+        Channel::Tempmailg => {
+            let t = token.ok_or("token is required for tempmailg")?;
+            providers::tempmailg::get_emails(t, email)
         },
         Channel::TaEasy => {
             let t = token.ok_or("token is required for ta-easy")?;

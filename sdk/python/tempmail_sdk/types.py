@@ -10,6 +10,7 @@ Channel = Literal[
     "tempmail",
     "tempmail-cn",
     "tmpmails",
+    "tempmailg",
     "ta-easy",
     "10mail-wangtz",
     "10minute-one",

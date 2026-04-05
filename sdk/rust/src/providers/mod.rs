@@ -5,6 +5,7 @@
 pub mod tempmail;
 pub mod tempmail_cn;
 pub mod tmpmails;
+pub mod tempmailg;
 pub mod ta_easy;
 pub mod tenmail_wangtz;
 pub mod tenminute_one;

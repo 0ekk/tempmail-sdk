@@ -13,37 +13,71 @@
 #define tm_sleep_ms(ms) usleep((ms) * 1000)
 #endif
 
+/* 与 Go SDK allChannels / listChannels 顺序一致 */
+static const tm_channel_t g_channel_try_order[] = {
+    CHANNEL_TEMPMAIL,
+    CHANNEL_TEMPMAIL_CN,
+    CHANNEL_TMPMAILS,
+    CHANNEL_TEMPMAILG,
+    CHANNEL_TA_EASY,
+    CHANNEL_10MAIL_WANGTZ,
+    CHANNEL_10MINUTE_ONE,
+    CHANNEL_LINSHI_EMAIL,
+    CHANNEL_LINSHIYOU,
+    CHANNEL_MFFAC,
+    CHANNEL_TEMPMAIL_LOL,
+    CHANNEL_CHATGPT_ORG_UK,
+    CHANNEL_TEMP_MAIL_IO,
+    CHANNEL_AWAMAIL,
+    CHANNEL_TEMPORARY_EMAIL_ORG,
+    CHANNEL_MAIL_TM,
+    CHANNEL_MAIL_CX,
+    CHANNEL_DROPMAIL,
+    CHANNEL_GUERRILLAMAIL,
+    CHANNEL_MAILDROP,
+    CHANNEL_SMAIL_PW,
+    CHANNEL_BOOMLIFY,
+    CHANNEL_MINMAIL,
+    CHANNEL_VIP_215,
+    CHANNEL_ANONBOX,
+    CHANNEL_FAKE_LEGAL,
+    CHANNEL_MOAKT,
+};
+
+#define TM_CHANNEL_TRY_N ((int)(sizeof(g_channel_try_order) / sizeof(g_channel_try_order[0])))
+
 static const tm_channel_info_t g_channel_infos[] = {
     { CHANNEL_TEMPMAIL,       "TempMail",       "tempmail.ing" },
+    { CHANNEL_TEMPMAIL_CN,    "TempMail CN",    "tempmail.cn" },
+    { CHANNEL_TMPMAILS,       "TmpMails",       "tmpmails.com" },
+    { CHANNEL_TEMPMAILG,      "TempMailG",      "tempmailg.com" },
+    { CHANNEL_TA_EASY,        "TA Easy",        "ta-easy.com" },
+    { CHANNEL_10MAIL_WANGTZ,  "10mail Wangtz",  "10mail.wangtz.cn" },
+    { CHANNEL_10MINUTE_ONE,   "10 Minute Email", "10minutemail.one" },
     { CHANNEL_LINSHI_EMAIL,   "临时邮箱",       "linshi-email.com" },
-    { CHANNEL_LINSHIYOU,     "临时邮",         "linshiyou.com" },
+    { CHANNEL_LINSHIYOU,      "临时邮",         "linshiyou.com" },
+    { CHANNEL_MFFAC,          "MFFAC",          "mffac.com" },
     { CHANNEL_TEMPMAIL_LOL,   "TempMail LOL",   "tempmail.lol" },
     { CHANNEL_CHATGPT_ORG_UK, "ChatGPT Mail",   "mail.chatgpt.org.uk" },
-    { CHANNEL_TEMP_MAIL_IO,   "Temp Mail IO",    "temp-mail.io" },
-    { CHANNEL_AWAMAIL,        "AwaMail",         "awamail.com" },
-    { CHANNEL_MAIL_TM,        "Mail.tm",         "mail.tm" },
-    { CHANNEL_MAIL_CX,       "Mail.cx",         "mail.cx" },
-    { CHANNEL_DROPMAIL,       "DropMail",        "dropmail.me" },
-    { CHANNEL_GUERRILLAMAIL,  "Guerrilla Mail",  "guerrillamail.com" },
-    { CHANNEL_MAILDROP,       "Maildrop",        "maildrop.cx" },
-    { CHANNEL_SMAIL_PW,       "Smail.pw",        "smail.pw" },
-    { CHANNEL_BOOMLIFY,       "Boomlify",        "boomlify.com" },
-    { CHANNEL_MINMAIL,        "MinMail",         "minmail.app" },
-    { CHANNEL_VIP_215,        "VIP 215",         "vip.215.im" },
+    { CHANNEL_TEMP_MAIL_IO,   "Temp Mail IO",   "temp-mail.io" },
+    { CHANNEL_AWAMAIL,        "AwaMail",        "awamail.com" },
     { CHANNEL_TEMPORARY_EMAIL_ORG, "Temporary Email", "temporary-email.org" },
-    { CHANNEL_ANONBOX,            "Anonbox",          "anonbox.net" },
-    { CHANNEL_FAKE_LEGAL,         "Fake Legal",       "fake.legal" },
-    { CHANNEL_MFFAC,              "MFFAC",            "mffac.com" },
-    { CHANNEL_TEMPMAIL_CN,        "TempMail CN",      "tempmail.cn" },
-    { CHANNEL_TA_EASY,            "TA Easy",          "ta-easy.com" },
-    { CHANNEL_TMPMAILS,           "TmpMails",         "tmpmails.com" },
-    { CHANNEL_10MAIL_WANGTZ,      "10mail Wangtz",    "10mail.wangtz.cn" },
-    { CHANNEL_MOAKT,              "Moakt",            "moakt.com" },
-    { CHANNEL_10MINUTE_ONE,       "10 Minute Email",  "10minutemail.one" },
+    { CHANNEL_MAIL_TM,        "Mail.tm",        "mail.tm" },
+    { CHANNEL_MAIL_CX,        "Mail.cx",        "mail.cx" },
+    { CHANNEL_DROPMAIL,       "DropMail",       "dropmail.me" },
+    { CHANNEL_GUERRILLAMAIL,  "Guerrilla Mail", "guerrillamail.com" },
+    { CHANNEL_MAILDROP,       "Maildrop",       "maildrop.cx" },
+    { CHANNEL_SMAIL_PW,       "Smail.pw",       "smail.pw" },
+    { CHANNEL_BOOMLIFY,       "Boomlify",       "boomlify.com" },
+    { CHANNEL_MINMAIL,        "MinMail",        "minmail.app" },
+    { CHANNEL_VIP_215,        "VIP 215",        "vip.215.im" },
+    { CHANNEL_ANONBOX,        "Anonbox",        "anonbox.net" },
+    { CHANNEL_FAKE_LEGAL,     "Fake Legal",     "fake.legal" },
+    { CHANNEL_MOAKT,          "Moakt",          "moakt.com" },
 };
 
 const tm_channel_info_t* tm_list_channels(int *count) {
-    if (count) *count = CHANNEL_COUNT;
+    if (count) *count = TM_CHANNEL_TRY_N;
     return g_channel_infos;
 }
 
@@ -81,6 +115,7 @@ static tm_email_info_t* tm_try_generate(tm_channel_t channel, int duration, cons
             case CHANNEL_MFFAC:          result = tm_provider_mffac_generate(); break;
             case CHANNEL_TA_EASY:        result = tm_provider_ta_easy_generate(); break;
             case CHANNEL_TMPMAILS:       result = tm_provider_tmpmails_generate(domain); break;
+            case CHANNEL_TEMPMAILG:      result = tm_provider_tempmailg_generate(domain); break;
             case CHANNEL_10MAIL_WANGTZ:  result = tm_provider_tenmail_wangtz_generate(domain); break;
             case CHANNEL_MOAKT:          result = tm_provider_moakt_generate(domain); break;
             case CHANNEL_10MINUTE_ONE:   result = tm_provider_tenminute_one_generate(domain); break;
@@ -108,22 +143,19 @@ static tm_email_info_t* tm_try_generate(tm_channel_t channel, int duration, cons
  * 调用者需 free 返回的数组
  */
 static tm_channel_t* tm_build_channel_order(tm_channel_t preferred, int *out_count) {
-    *out_count = CHANNEL_COUNT;
-    tm_channel_t *order = (tm_channel_t*)malloc(sizeof(tm_channel_t) * CHANNEL_COUNT);
+    *out_count = TM_CHANNEL_TRY_N;
+    tm_channel_t *order = (tm_channel_t*)malloc(sizeof(tm_channel_t) * (size_t)TM_CHANNEL_TRY_N);
     if (!order) return NULL;
 
-    /* 填充全部渠道 */
-    for (int i = 0; i < CHANNEL_COUNT; i++) order[i] = (tm_channel_t)i;
+    for (int i = 0; i < TM_CHANNEL_TRY_N; i++) order[i] = g_channel_try_order[i];
 
-    /* Fisher-Yates 洗牌 */
-    for (int i = CHANNEL_COUNT - 1; i > 0; i--) {
+    for (int i = TM_CHANNEL_TRY_N - 1; i > 0; i--) {
         int j = rand() % (i + 1);
         tm_channel_t tmp = order[i]; order[i] = order[j]; order[j] = tmp;
     }
 
     if (preferred != CHANNEL_RANDOM && preferred >= 0 && preferred < CHANNEL_COUNT) {
-        /* 将指定渠道移到第一个位置 */
-        for (int i = 0; i < CHANNEL_COUNT; i++) {
+        for (int i = 0; i < TM_CHANNEL_TRY_N; i++) {
             if (order[i] == preferred) {
                 tm_channel_t tmp = order[0]; order[0] = order[i]; order[i] = tmp;
                 break;
@@ -255,6 +287,10 @@ tm_get_emails_result_t* tm_get_emails(const tm_email_info_t *email_info, const t
             case CHANNEL_TMPMAILS:
                 if (!email_info->token) { count = -1; break; }
                 emails = tm_provider_tmpmails_get_emails(email_info->token, email_info->email, &count);
+                break;
+            case CHANNEL_TEMPMAILG:
+                if (!email_info->token) { count = -1; break; }
+                emails = tm_provider_tempmailg_get_emails(email_info->token, email_info->email, &count);
                 break;
             case CHANNEL_10MAIL_WANGTZ:
                 emails = tm_provider_tenmail_wangtz_get_emails(email_info->email, &count);

@@ -91,6 +91,9 @@ tm_email_t* tm_provider_tempmail_cn_get_emails(const char *email, int *count);
 tm_email_info_t* tm_provider_tmpmails_generate(const char *domain);
 tm_email_t* tm_provider_tmpmails_get_emails(const char *token, const char *email, int *count);
 
+tm_email_info_t* tm_provider_tempmailg_generate(const char *domain);
+tm_email_t* tm_provider_tempmailg_get_emails(const char *token, const char *email, int *count);
+
 int tm_linshi_random_api_path_key(char *out, size_t out_cap);
 void tm_linshi_derive_path_key(const char *visitor_id, char *out, size_t cap);
 
