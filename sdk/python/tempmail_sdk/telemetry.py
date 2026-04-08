@@ -89,6 +89,7 @@ def _ensure_periodic() -> None:
 
 
 def _flush_batch() -> None:
+    global _flush_timer
     if not _telemetry_on():
         with _lock:
             _queue.clear()
